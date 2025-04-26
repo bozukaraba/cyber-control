@@ -4,6 +4,7 @@
 
 [build.environment]
   NODE_VERSION = "16"
+  PYTHON_ENABLED = "false"
 
 [[redirects]]
   from = "/*"
