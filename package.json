@@ -1,0 +1,35 @@
+{
+  "name": "cyber-control",
+  "version": "1.0.0",
+  "description": "İleri Seviye Siber Güvenlik Tarama Aracı",
+  "main": "index.html",
+  "scripts": {
+    "start": "serve",
+    "build": "mkdir -p dist && cp -r index.html static dist/ && echo 'Static site built successfully'"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bozukaraba/cyber-control.git"
+  },
+  "keywords": [
+    "security",
+    "scanner",
+    "web-security",
+    "vulnerability"
+  ],
+  "author": "CyberControl",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/bozukaraba/cyber-control/issues"
+  },
+  "homepage": "https://github.com/bozukaraba/cyber-control#readme",
+  "dependencies": {
+    "bootstrap": "^5.3.2",
+    "jspdf": "^2.5.1",
+    "html2canvas": "^1.4.1",
+    "font-awesome": "^6.4.2"
+  },
+  "devDependencies": {
+    "serve": "^14.2.1"
+  }
+} 

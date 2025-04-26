@@ -1,7 +1,11 @@
 [build]
-  publish = "."
-  command = "echo 'Static site, no build required'"
+  publish = "dist"
+  command = "npm run build"
 
 [build.environment]
-  PYTHON_VERSION = "3.9"
-  PIP_VERSION = "23.0.1" 
+  NODE_VERSION = "18"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200 
