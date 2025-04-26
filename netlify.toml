@@ -3,10 +3,4 @@
   command = "npm run build"
 
 [build.environment]
-  NODE_VERSION = "16"
-  PYTHON_ENABLED = "false"
-
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200 
+  NODE_VERSION = "16" 
