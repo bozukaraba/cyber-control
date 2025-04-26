@@ -1,0 +1,7 @@
+[build]
+  publish = "."
+  command = "echo 'Static site, no build required'"
+
+[build.environment]
+  PYTHON_VERSION = "3.9"
+  PIP_VERSION = "23.0.1" 

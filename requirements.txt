@@ -12,5 +12,7 @@ Jinja2==3.0.1
 itsdangerous==2.0.1
 click==8.0.1
 MarkupSafe==2.0.1
-pillow==8.3.2
-configparser>=5.0.0  # Eski SafeConfigParser kullanım hatasını önlemek için 
+# Pillow sürümünü Netlify build sorunları nedeniyle güncelledik
+Pillow>=9.0.0
+configparser>=5.0.0  # Eski SafeConfigParser kullanım hatasını önlemek için
+wheel>=0.37.0  # Wheel oluşturma sorunlarını önlemek için 
