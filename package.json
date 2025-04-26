@@ -5,7 +5,7 @@
   "main": "index.html",
   "scripts": {
     "start": "serve",
-    "build": "mkdir -p dist && cp -r index.html static dist/ && echo 'Static site built successfully'"
+    "build": "mkdir -p dist && cp -r index.html dist/ && cp -r static dist/"
   },
   "repository": {
     "type": "git",
