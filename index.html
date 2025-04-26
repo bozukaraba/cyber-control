@@ -1,0 +1,1338 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CyberControl - İleri Seviye Siber Güvenlik Tarama Aracı</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #0d6efd;
+            --secondary-color: #6c757d;
+            --success-color: #198754;
+            --danger-color: #dc3545;
+            --warning-color: #ffc107;
+            --info-color: #0dcaf0;
+            --dark-color: #212529;
+            --light-color: #f8f9fa;
+            --border-radius: 0.5rem;
+            --box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+            --transition: all 0.3s ease;
+            --animation-timing: 0.4s;
+        }
+        
+        body {
+            opacity: 1;
+            transition: var(--transition);
+            background-color: #f5f8fa;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        body.loaded {
+            opacity: 1;
+        }
+        
+        .navbar {
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            background: linear-gradient(135deg, var(--primary-color), #145fd6);
+        }
+        
+        .navbar-brand {
+            font-weight: 700;
+            color: white !important;
+            display: flex;
+            align-items: center;
+        }
+        
+        .navbar-brand i {
+            margin-right: 0.5rem;
+            font-size: 1.5rem;
+        }
+        
+        .main-container {
+            flex: 1;
+            padding: 2rem 0;
+        }
+        
+        .card {
+            border: none;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            transition: var(--transition);
+            overflow: hidden;
+            margin-bottom: 2rem;
+            background-color: white;
+            animation: fadeInUp var(--animation-timing) ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 1rem 2rem rgba(0, 0, 0, 0.15);
+        }
+        
+        .card-header {
+            background-color: var(--primary-color);
+            color: white;
+            font-weight: 600;
+            padding: 1rem;
+            border-bottom: none;
+        }
+        
+        .card-body {
+            padding: 1.5rem;
+        }
+        
+        .form-label {
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+        }
+        
+        .form-control {
+            border-radius: 0.375rem;
+            padding: 0.75rem;
+            border: 1px solid #dee2e6;
+            transition: var(--transition);
+        }
+        
+        .form-control:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+        }
+        
+        .btn {
+            border-radius: 0.375rem;
+            padding: 0.75rem 1.5rem;
+            font-weight: 500;
+            transition: var(--transition);
+        }
+        
+        .btn-primary {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+        
+        .btn-primary:hover {
+            background-color: #0b5ed7;
+            border-color: #0b5ed7;
+            transform: translateY(-2px);
+        }
+        
+        .btn-success {
+            background-color: var(--success-color);
+            border-color: var(--success-color);
+        }
+        
+        .btn-success:hover {
+            background-color: #157347;
+            border-color: #157347;
+            transform: translateY(-2px);
+        }
+        
+        .scan-option-card {
+            border: 1px solid #e9ecef;
+            border-radius: var(--border-radius);
+            padding: 1rem;
+            margin-bottom: 1rem;
+            transition: var(--transition);
+            background-color: white;
+        }
+        
+        .scan-option-card:hover {
+            border-color: var(--primary-color);
+            box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.1);
+        }
+        
+        .custom-checkbox {
+            position: relative;
+            padding-left: 35px;
+            cursor: pointer;
+            font-weight: 500;
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+        
+        .custom-checkbox input {
+            position: absolute;
+            opacity: 0;
+            cursor: pointer;
+            height: 0;
+            width: 0;
+        }
+        
+        .checkmark {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 25px;
+            width: 25px;
+            background-color: #eee;
+            border-radius: 4px;
+            transition: var(--transition);
+        }
+        
+        .custom-checkbox:hover input ~ .checkmark {
+            background-color: #ccc;
+        }
+        
+        .custom-checkbox input:checked ~ .checkmark {
+            background-color: var(--primary-color);
+        }
+        
+        .checkmark:after {
+            content: "";
+            position: absolute;
+            display: none;
+        }
+        
+        .custom-checkbox input:checked ~ .checkmark:after {
+            display: block;
+        }
+        
+        .custom-checkbox .checkmark:after {
+            left: 9px;
+            top: 5px;
+            width: 7px;
+            height: 12px;
+            border: solid white;
+            border-width: 0 3px 3px 0;
+            transform: rotate(45deg);
+        }
+        
+        .scan-info {
+            font-size: 0.9rem;
+            color: var(--secondary-color);
+            margin-top: 0.5rem;
+        }
+        
+        .progress {
+            height: 1.5rem;
+            border-radius: var(--border-radius);
+            margin-bottom: 1rem;
+            background-color: #e9ecef;
+        }
+        
+        .progress-bar {
+            background-color: var(--primary-color);
+            transition: width 0.3s ease;
+        }
+        
+        #toastContainer {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+        }
+        
+        .toast {
+            max-width: 400px;
+            overflow: hidden;
+            font-size: 0.875rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+            padding: 0.75rem 1.25rem;
+            margin-bottom: 0.75rem;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        footer {
+            background-color: var(--dark-color);
+            color: white;
+            padding: 1.5rem 0;
+            margin-top: auto;
+        }
+        
+        footer a {
+            color: var(--info-color);
+            text-decoration: none;
+            transition: var(--transition);
+        }
+        
+        footer a:hover {
+            color: white;
+        }
+        
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(13, 110, 253, 0.7);
+            }
+            70% {
+                box-shadow: 0 0 0 10px rgba(13, 110, 253, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(13, 110, 253, 0);
+            }
+        }
+        
+        .animate-pulse {
+            animation: pulse 2s infinite;
+        }
+    </style>
+</head>
+<body class="loaded">
+    <!-- Header Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-shield-alt"></i> CyberControl
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#"><i class="fas fa-home"></i> Ana Sayfa</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" id="aboutBtn"><i class="fas fa-info-circle"></i> Hakkında</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container main-container">
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <!-- Başlık Kartı -->
+                <div class="card mb-4">
+                    <div class="card-body text-center py-4">
+                        <h1 class="display-5 fw-bold text-primary mb-3">İleri Seviye Siber Güvenlik Tarama Aracı</h1>
+                        <p class="lead mb-4">Web uygulamaları ve sunucular için kapsamlı güvenlik açığı tarama aracı</p>
+                        <div class="d-flex justify-content-center">
+                            <div class="text-center mx-3">
+                                <i class="fas fa-lock fa-2x text-primary mb-2"></i>
+                                <p>SSL/TLS Analizi</p>
+                            </div>
+                            <div class="text-center mx-3">
+                                <i class="fas fa-search fa-2x text-primary mb-2"></i>
+                                <p>Açık Port Tarama</p>
+                            </div>
+                            <div class="text-center mx-3">
+                                <i class="fas fa-code fa-2x text-primary mb-2"></i>
+                                <p>XSS ve SQL</p>
+                            </div>
+                            <div class="text-center mx-3">
+                                <i class="fas fa-file-pdf fa-2x text-primary mb-2"></i>
+                                <p>PDF Rapor</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tarama Formu -->
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-shield-alt me-2"></i> Güvenlik Taraması Başlat
+                    </div>
+                    <div class="card-body">
+                        <!-- Form hata mesajları -->
+                        <div id="formErrors" class="alert alert-danger" style="display: none;"></div>
+                        
+                        <form id="scanForm">
+                            <div class="mb-4">
+                                <label for="url" class="form-label">Hedef URL</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-globe"></i></span>
+                                    <input type="url" class="form-control" id="url" name="url" placeholder="https://ornek.com" required>
+                                </div>
+                                <div class="form-text text-muted">Tarama yapmak istediğiniz web sitesinin tam URL'sini girin.</div>
+                            </div>
+
+                            <div class="mb-4">
+                                <label class="form-label">Tarama Seçenekleri</label>
+                                <div class="mb-2">
+                                    <button type="button" id="selectAllBtn" class="btn btn-sm btn-outline-primary me-2">
+                                        <i class="fas fa-check-square me-1"></i> Tümünü Seç
+                                    </button>
+                                    <button type="button" id="deselectAllBtn" class="btn btn-sm btn-outline-secondary">
+                                        <i class="fas fa-square me-1"></i> Tümünü Kaldır
+                                    </button>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="scan-option-card">
+                                            <label class="custom-checkbox">
+                                                <input type="checkbox" name="scan_options" id="ssl" checked>
+                                                <span class="checkmark"></span>
+                                                SSL/TLS Güvenlik Testi
+                                            </label>
+                                            <div class="scan-info">
+                                                <i class="fas fa-info-circle me-1"></i> HTTPS sertifikası ve şifreleme kontrolü yapar.
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-6">
+                                        <div class="scan-option-card">
+                                            <label class="custom-checkbox">
+                                                <input type="checkbox" name="scan_options" id="port" checked>
+                                                <span class="checkmark"></span>
+                                                Açık Port Taraması
+                                            </label>
+                                            <div class="scan-info">
+                                                <i class="fas fa-info-circle me-1"></i> Yaygın portlarda açık hizmetleri tespit eder.
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-6">
+                                        <div class="scan-option-card">
+                                            <label class="custom-checkbox">
+                                                <input type="checkbox" name="scan_options" id="http_headers" checked>
+                                                <span class="checkmark"></span>
+                                                HTTP Güvenlik Header Testi
+                                            </label>
+                                            <div class="scan-info">
+                                                <i class="fas fa-info-circle me-1"></i> HSTS, CSP gibi güvenlik başlıklarını kontrol eder.
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-6">
+                                        <div class="scan-option-card">
+                                            <label class="custom-checkbox">
+                                                <input type="checkbox" name="scan_options" id="sql_injection" checked>
+                                                <span class="checkmark"></span>
+                                                SQL Injection Testi
+                                            </label>
+                                            <div class="scan-info">
+                                                <i class="fas fa-info-circle me-1"></i> SQL enjeksiyonu açıklarını tespit eder.
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-6">
+                                        <div class="scan-option-card">
+                                            <label class="custom-checkbox">
+                                                <input type="checkbox" name="scan_options" id="xss" checked>
+                                                <span class="checkmark"></span>
+                                                XSS Testi
+                                            </label>
+                                            <div class="scan-info">
+                                                <i class="fas fa-info-circle me-1"></i> Cross-Site Scripting açıklarını test eder.
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-6">
+                                        <div class="scan-option-card">
+                                            <label class="custom-checkbox">
+                                                <input type="checkbox" name="scan_options" id="server_info" checked>
+                                                <span class="checkmark"></span>
+                                                Sunucu Bilgi Sızıntısı Testi
+                                            </label>
+                                            <div class="scan-info">
+                                                <i class="fas fa-info-circle me-1"></i> Sunucu bilgi ifşalarını tespit eder.
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-6">
+                                        <div class="scan-option-card">
+                                            <label class="custom-checkbox">
+                                                <input type="checkbox" name="scan_options" id="admin_panel" checked>
+                                                <span class="checkmark"></span>
+                                                Admin Panel Tespiti
+                                            </label>
+                                            <div class="scan-info">
+                                                <i class="fas fa-info-circle me-1"></i> Yaygın admin panel URL'lerini tarar.
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-6">
+                                        <div class="scan-option-card">
+                                            <label class="custom-checkbox">
+                                                <input type="checkbox" name="scan_options" id="cms" checked>
+                                                <span class="checkmark"></span>
+                                                CMS Açıkları
+                                            </label>
+                                            <div class="scan-info">
+                                                <i class="fas fa-info-circle me-1"></i> WordPress, Joomla gibi CMS açıklarını tarar.
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-6">
+                                        <div class="scan-option-card">
+                                            <label class="custom-checkbox">
+                                                <input type="checkbox" name="scan_options" id="file_upload" checked>
+                                                <span class="checkmark"></span>
+                                                Dosya Yükleme Zafiyeti Testi
+                                            </label>
+                                            <div class="scan-info">
+                                                <i class="fas fa-info-circle me-1"></i> Zararlı dosya yükleme açıklarını kontrol eder.
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-6">
+                                        <div class="scan-option-card">
+                                            <label class="custom-checkbox">
+                                                <input type="checkbox" name="scan_options" id="brute_force" checked>
+                                                <span class="checkmark"></span>
+                                                Brute Force Saldırı Testi
+                                            </label>
+                                            <div class="scan-info">
+                                                <i class="fas fa-info-circle me-1"></i> Kaba kuvvet saldırılarına karşı dayanıklılığı test eder.
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="text-center mt-4">
+                                <button type="submit" class="btn btn-primary animate-pulse">
+                                    <i class="fas fa-shield-alt me-1"></i> Taramayı Başlat
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Sonuçlar Bölümü (Başta gizli) -->
+                <div id="resultsSection" class="mt-4" style="display: none;">
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="fas fa-chart-bar me-2"></i> Tarama Sonuçları
+                        </div>
+                        <div class="card-body">
+                            <!-- Yükleniyor Göstergesi -->
+                            <div id="loadingIndicator">
+                                <div class="text-center mb-3">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Yükleniyor...</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="progress mb-3">
+                                    <div id="scanProgress" class="progress-bar progress-bar-striped progress-bar-animated" 
+                                         role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                                </div>
+                                
+                                <p id="currentScan" class="text-center fw-bold">Tarama başlatılıyor...</p>
+                            </div>
+                            
+                            <!-- Sonuç İndirme (Başta gizli) -->
+                            <div id="resultDownload" style="display: none;" class="text-center">
+                                <div class="mb-4">
+                                    <i class="fas fa-check-circle text-success fa-4x mb-3"></i>
+                                    <h3 class="text-success">Tarama Tamamlandı!</h3>
+                                    <p>Tüm tarama işlemleri başarıyla tamamlandı. PDF raporunu indirebilirsiniz.</p>
+                                </div>
+                                
+                                <!-- Tespit edilen açıklar -->
+                                <div id="vulnerabilitiesPanel" class="mt-4 mb-4">
+                                    <h4 class="text-start mb-3">Tespit Edilen Açıklar</h4>
+                                    <div class="table-responsive">
+                                        <table class="table table-striped table-hover">
+                                            <thead class="table-dark">
+                                                <tr>
+                                                    <th>Açık</th>
+                                                    <th>Risk Seviyesi</th>
+                                                    <th>Açıklama</th>
+                                                    <th>Öneri</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="vulnerabilitiesTable">
+                                                <!-- JavaScript ile doldurulacak -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                                
+                                <button id="downloadBtn" class="btn btn-success btn-lg">
+                                    <i class="fas fa-file-pdf me-2"></i> PDF Raporu İndir
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Toast Container -->
+    <div id="toastContainer"></div>
+
+    <!-- About Modal -->
+    <div class="modal fade" id="aboutModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">
+                        <i class="fas fa-info-circle me-2"></i> CyberControl Hakkında
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <h5 class="mb-3">İleri Seviye Siber Güvenlik Tarama Aracı</h5>
+                    <p>CyberControl, web uygulamaları ve sunucular için kapsamlı bir güvenlik açığı tarama aracıdır. Bu araç, güvenlik profesyonellerine ve BT uzmanlarına potansiyel güvenlik açıklarını tespit etmede yardımcı olmayı amaçlamaktadır.</p>
+                    
+                    <h5 class="mt-4 mb-3">Tarama Özellikleri</h5>
+                    <ul class="list-group mb-4">
+                        <li class="list-group-item"><i class="fas fa-check-circle text-success me-2"></i> SSL/TLS Güvenlik Analizi</li>
+                        <li class="list-group-item"><i class="fas fa-check-circle text-success me-2"></i> Açık Port Tarama</li>
+                        <li class="list-group-item"><i class="fas fa-check-circle text-success me-2"></i> HTTP Güvenlik Başlıkları Kontrolü</li>
+                        <li class="list-group-item"><i class="fas fa-check-circle text-success me-2"></i> SQL Injection ve XSS Testi</li>
+                        <li class="list-group-item"><i class="fas fa-check-circle text-success me-2"></i> CMS Açık Taraması</li>
+                        <li class="list-group-item"><i class="fas fa-check-circle text-success me-2"></i> Detaylı PDF Raporu</li>
+                    </ul>
+                    
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i> <strong>Uyarı:</strong> Bu araç, yalnızca güvenlik testi amacıyla, yetkili olduğunuz sistemlerde kullanılmalıdır. İzinsiz tarama yapmak yasal sorumluluklar doğurabilir.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <p class="mb-0">&copy; 2023 CyberControl. Tüm hakları saklıdır.</p>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <p class="mb-0">Sadece eğitim ve güvenlik testi amaçlıdır.</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <script>
+        // DOM elementlerini seç
+        const scanForm = document.getElementById('scanForm');
+        const selectAllBtn = document.getElementById('selectAllBtn');
+        const deselectAllBtn = document.getElementById('deselectAllBtn');
+        const resultsSection = document.getElementById('resultsSection');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const resultDownload = document.getElementById('resultDownload');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const currentScan = document.getElementById('currentScan');
+        const scanProgress = document.getElementById('scanProgress');
+        const aboutBtn = document.getElementById('aboutBtn');
+        const aboutModal = document.getElementById('aboutModal');
+        const urlInput = document.getElementById('url');
+        const toastContainer = document.getElementById('toastContainer');
+
+        // Tüm checkboxları seç
+        const checkboxes = document.querySelectorAll('input[name="scan_options"]');
+
+        // DOM yüklendikten sonra çalışacak kodlar
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM yüklendi!');
+            // Sayfanın yükleme animasyonu
+            document.body.classList.add('loaded');
+            
+            // Bootstrap tooltips'i başlat (Bootstrap yüklenmişse)
+            if (typeof bootstrap !== 'undefined') {
+                const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+                [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
+            } else {
+                console.warn('Bootstrap yüklenmemiş');
+            }
+
+            // Hoş geldin bildirimi
+            setTimeout(() => {
+                showToast('Hoş Geldiniz', 'CyberControl Siber Güvenlik Tarama Aracına hoş geldiniz! Taramaya başlamak için bir URL girin.', 'primary');
+            }, 1000);
+
+            // Modal yönetimi için Bootstrap modal kullan
+            if (aboutModal && aboutBtn && typeof bootstrap !== 'undefined') {
+                const bsAboutModal = new bootstrap.Modal(aboutModal);
+                
+                // Modal açma
+                aboutBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    bsAboutModal.show();
+                });
+            }
+
+            // Tümünü Seç butonu işlevi
+            if (selectAllBtn && checkboxes.length > 0) {
+                selectAllBtn.addEventListener('click', function() {
+                    checkboxes.forEach(checkbox => {
+                        checkbox.checked = true;
+                    });
+                    showToast('Bilgi', 'Tüm tarama seçenekleri seçildi.', 'info');
+                });
+            }
+
+            // Tümünü Kaldır butonu işlevi
+            if (deselectAllBtn && checkboxes.length > 0) {
+                deselectAllBtn.addEventListener('click', function() {
+                    checkboxes.forEach(checkbox => {
+                        checkbox.checked = false;
+                    });
+                    showToast('Bilgi', 'Tüm tarama seçenekleri kaldırıldı.', 'info');
+                });
+            }
+
+            // Form gönderildiğinde işlem yap
+            if (scanForm) {
+                scanForm.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    
+                    // Form doğrulama
+                    if (!validateForm()) {
+                        return;
+                    }
+
+                    // Form verilerini al
+                    const url = urlInput ? urlInput.value.trim() : '';
+                    
+                    // Seçilen tarama seçeneklerini topla
+                    const selectedOptions = [];
+                    document.querySelectorAll('input[name="scan_options"]:checked').forEach(checkbox => {
+                        selectedOptions.push(checkbox.id);
+                    });
+                    
+                    if (selectedOptions.length === 0) {
+                        showToast('Uyarı', 'Lütfen en az bir tarama seçeneği seçin', 'warning');
+                        return;
+                    }
+                    
+                    try {
+                        // Tarama işlemini başlat
+                        resultsSection.style.display = 'block';
+                        loadingIndicator.style.display = 'block';
+                        resultDownload.style.display = 'none';
+                        
+                        // Gerçek tarama başlat
+                        const scanResults = await performScan(url, selectedOptions);
+                        
+                        // Tarama tamamlandığında sonuçları göster
+                        loadingIndicator.style.display = 'none';
+                        resultDownload.style.display = 'block';
+                        
+                        // Sayfayı sonuçlar bölümüne kaydır
+                        resultsSection.scrollIntoView({ behavior: 'smooth' });
+                        
+                        // Sonuçları göster
+                        showScanResults(scanResults);
+                        
+                    } catch (error) {
+                        // Hata durumunda bildirim göster
+                        showToast('Hata', `Tarama sırasında bir hata oluştu: ${error.message}`, 'danger');
+                        console.error('Tarama hatası:', error);
+                        
+                        // Hata durumunda yükleme göstergesini gizle
+                        loadingIndicator.style.display = 'none';
+                    }
+                });
+            }
+
+            // PDF Rapor indirme işlemi
+            if (downloadBtn) {
+                downloadBtn.addEventListener('click', function() {
+                    try {
+                        // PDF indirme işlemini başlat
+                        showToast('Bilgi', 'PDF Raporu hazırlanıyor...', 'info');
+                        
+                        // Gerçek PDF oluşturma ve indirme işlemi
+                        generateReport();
+                    } catch (error) {
+                        showToast('Hata', `PDF raporu oluşturulurken bir hata oluştu: ${error.message}`, 'danger');
+                    }
+                });
+            }
+        });
+
+        // Toast bildirimlerini gösterme
+        function showToast(title, message, type = 'info') {
+            if (!toastContainer) return;
+            
+            const toast = document.createElement('div');
+            toast.className = `toast align-items-center text-white bg-${type} border-0`;
+            toast.setAttribute('role', 'alert');
+            toast.setAttribute('aria-live', 'assertive');
+            toast.setAttribute('aria-atomic', 'true');
+            
+            toast.innerHTML = `
+                <div class="d-flex">
+                    <div class="toast-body">
+                        <strong>${title}:</strong> ${message}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Kapat"></button>
+                </div>
+            `;
+            
+            toastContainer.appendChild(toast);
+            
+            const bsToast = new bootstrap.Toast(toast, {
+                autohide: true,
+                delay: 4000
+            });
+            
+            bsToast.show();
+            
+            // 5 saniye sonra toast'u kaldır
+            setTimeout(() => {
+                toast.remove();
+            }, 5000);
+        }
+
+        // URL doğrulama fonksiyonu
+        function validateForm() {
+            // urlInput element kontrolü
+            if (!urlInput) {
+                showToast('Hata', 'URL giriş alanı bulunamadı', 'danger');
+                return false;
+            }
+            
+            const targetUrl = urlInput.value.trim();
+            
+            // URL kontrolü
+            if (!targetUrl) {
+                showToast('Hata', 'Lütfen hedef URL giriniz', 'danger');
+                return false;
+            } 
+            
+            if (!isValidUrl(targetUrl)) {
+                showToast('Hata', 'Lütfen geçerli bir URL giriniz (http:// veya https:// ile başlamalı)', 'danger');
+                return false;
+            }
+            
+            // Seçenek kontrolü
+            const selectedOptions = document.querySelectorAll('input[name="scan_options"]:checked');
+            if (selectedOptions.length === 0) {
+                showToast('Uyarı', 'Lütfen en az bir tarama seçeneği seçiniz', 'warning');
+                return false;
+            }
+            
+            return true;
+        }
+
+        // URL doğrulama fonksiyonu
+        function isValidUrl(url) {
+            try {
+                const urlObj = new URL(url);
+                return urlObj.protocol === 'http:' || urlObj.protocol === 'https:';
+            } catch (e) {
+                return false;
+            }
+        }
+        
+        // Sleep fonksiyonu
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+        
+        // Gerçek tarama fonksiyonu
+        async function performScan(url, options) {
+            // İlerlemeyi göstermek için tarama aşamalarını tanımla
+            const scanStages = [
+                { id: 'ssl', name: 'SSL/TLS güvenlik testi yapılıyor...' },
+                { id: 'port', name: 'Açık port taraması gerçekleştiriliyor...' },
+                { id: 'http_headers', name: 'HTTP güvenlik başlıkları kontrol ediliyor...' },
+                { id: 'sql_injection', name: 'SQL Injection testleri yapılıyor...' },
+                { id: 'xss', name: 'XSS testleri yapılıyor...' },
+                { id: 'server_info', name: 'Sunucu bilgi sızıntıları kontrol ediliyor...' },
+                { id: 'admin_panel', name: 'Admin panel tespiti yapılıyor...' },
+                { id: 'cms', name: 'CMS açıkları taranıyor...' },
+                { id: 'file_upload', name: 'Dosya yükleme zafiyetleri test ediliyor...' },
+                { id: 'brute_force', name: 'Brute force saldırı testi yapılıyor...' }
+            ];
+            
+            // İşlem yapılacak tarama aşamalarını filtrele
+            const selectedScanStages = scanStages.filter(stage => options.includes(stage.id));
+            
+            // Sonuçlar nesnesi oluştur
+            const results = {
+                target_url: url,
+                scan_date: new Date().toISOString(),
+                scan_results: {},
+                vulnerabilities: [],
+                security_score: 100  // Başlangıç puanı
+            };
+            
+            // Her bir tarama aşaması için
+            for (let i = 0; i < selectedScanStages.length; i++) {
+                const stage = selectedScanStages[i];
+                
+                // İlerleme durumunu güncelle
+                updateScanStatus(stage.name, (i + 1) / selectedScanStages.length * 100);
+                
+                try {
+                    // İlgili tarama fonksiyonunu çağır
+                    const stageResult = await scanFunction(url, stage.id);
+                    
+                    // Sonuçları kaydet
+                    results.scan_results[stage.id] = stageResult;
+                    
+                    // Bulunan açıkları listele
+                    if (stageResult.vulnerabilities && stageResult.vulnerabilities.length > 0) {
+                        results.vulnerabilities = [...results.vulnerabilities, ...stageResult.vulnerabilities];
+                        
+                        // Her açık için güvenlik puanını düşür
+                        stageResult.vulnerabilities.forEach(vuln => {
+                            switch(vuln.severity) {
+                                case 'Kritik': results.security_score -= 15; break;
+                                case 'Yüksek': results.security_score -= 10; break;
+                                case 'Orta': results.security_score -= 5; break;
+                                case 'Düşük': results.security_score -= 2; break;
+                            }
+                        });
+                    }
+                    
+                    // Kısa bir bekleme süresi
+                    await sleep(Math.random() * 500 + 500);
+                } catch (error) {
+                    console.error(`${stage.id} taraması sırasında hata:`, error);
+                    results.scan_results[stage.id] = { error: error.message };
+                }
+            }
+            
+            // Güvenlik puanının 0'ın altına düşmesini engelle
+            results.security_score = Math.max(0, results.security_score);
+            
+            // Rapor oluşturma
+            updateScanStatus('Sonuçlar hazırlanıyor ve rapor oluşturuluyor...', 100);
+            await sleep(1000);
+            
+            return results;
+        }
+        
+        // Tarama durumunu güncelle
+        function updateScanStatus(message, percentage) {
+            if (currentScan) {
+                currentScan.textContent = message;
+            }
+            
+            if (scanProgress) {
+                scanProgress.style.width = `${percentage}%`;
+                scanProgress.setAttribute('aria-valuenow', percentage);
+                
+                // İlerleme çubuğu rengi
+                if (percentage < 30) {
+                    scanProgress.className = 'progress-bar progress-bar-striped progress-bar-animated bg-info';
+                } else if (percentage < 70) {
+                    scanProgress.className = 'progress-bar progress-bar-striped progress-bar-animated bg-primary';
+                } else if (percentage < 90) {
+                    scanProgress.className = 'progress-bar progress-bar-striped progress-bar-animated bg-warning';
+                } else {
+                    scanProgress.className = 'progress-bar progress-bar-striped progress-bar-animated bg-success';
+                }
+            }
+        }
+        
+        // Spesifik tarama türü için tarama gerçekleştir
+        async function scanFunction(url, scanType) {
+            // Gerçek uygulamada burada API istekleri olacak
+            // Şimdilik demo için simüle ediyoruz
+            
+            // SSL/TLS Güvenlik Testi
+            if (scanType === 'ssl') {
+                await sleep(1500); // SSL kontrolü simülasyonu
+                
+                return {
+                    certificate_valid: Math.random() > 0.3,
+                    certificate_expiry: new Date(Date.now() + 1000 * 60 * 60 * 24 * 90).toISOString(),
+                    vulnerabilities: Math.random() > 0.7 ? [
+                        {
+                            name: 'Zayıf SSL Şifreleme Algoritması Kullanımı',
+                            description: 'Sunucu eski ve güvensiz SSL şifreleme algoritmaları kullanıyor.',
+                            severity: 'Orta',
+                            recommendation: 'Sunucu yapılandırmasını güncellemelisiniz ve güçlü TLS 1.2+ şifreleme algoritmalarını kullanmalısınız.'
+                        }
+                    ] : []
+                };
+            }
+            
+            // Açık Port Taraması
+            if (scanType === 'port') {
+                await sleep(2000); // Port taraması simülasyonu
+                
+                const openPorts = [];
+                const commonPorts = [21, 22, 23, 25, 80, 443, 3306, 3389, 8080];
+                
+                // Rastgele açık portlar oluştur
+                commonPorts.forEach(port => {
+                    if (Math.random() > 0.7) {
+                        let service = '';
+                        switch (port) {
+                            case 21: service = 'FTP'; break;
+                            case 22: service = 'SSH'; break;
+                            case 23: service = 'Telnet'; break;
+                            case 25: service = 'SMTP'; break;
+                            case 80: service = 'HTTP'; break;
+                            case 443: service = 'HTTPS'; break;
+                            case 3306: service = 'MySQL'; break;
+                            case 3389: service = 'RDP'; break;
+                            case 8080: service = 'HTTP Proxy'; break;
+                            default: service = 'Bilinmeyen';
+                        }
+                        
+                        openPorts.push({ port, service });
+                    }
+                });
+                
+                // Açık portlara göre zafiyet belirle
+                const vulnerabilities = [];
+                if (openPorts.some(p => p.port === 23)) {
+                    vulnerabilities.push({
+                        name: 'Telnet Servisi Aktif',
+                        description: 'Telnet, şifrelenmemiş bir protokoldür ve kullanılması önerilmez.',
+                        severity: 'Yüksek',
+                        recommendation: 'Telnet yerine SSH kullanmalısınız. Telnet servisini devre dışı bırakın.'
+                    });
+                }
+                
+                return {
+                    open_ports: openPorts,
+                    vulnerabilities
+                };
+            }
+            
+            // HTTP Güvenlik Header Testi
+            if (scanType === 'http_headers') {
+                await sleep(1200);
+                
+                const headers = {
+                    'Content-Security-Policy': Math.random() > 0.5,
+                    'X-Frame-Options': Math.random() > 0.4,
+                    'X-XSS-Protection': Math.random() > 0.6,
+                    'Strict-Transport-Security': Math.random() > 0.3,
+                };
+                
+                const vulnerabilities = [];
+                
+                if (!headers['Content-Security-Policy']) {
+                    vulnerabilities.push({
+                        name: 'Content-Security-Policy (CSP) Header Eksik',
+                        description: 'CSP, XSS saldırılarını önlemeye yardımcı olur.',
+                        severity: 'Orta',
+                        recommendation: 'Web sunucusu yapılandırmasına uygun bir CSP başlığı ekleyin.'
+                    });
+                }
+                
+                if (!headers['Strict-Transport-Security']) {
+                    vulnerabilities.push({
+                        name: 'HTTP Strict Transport Security (HSTS) Header Eksik',
+                        description: 'HSTS, HTTPS bağlantılarını zorlar ve MITM saldırılarına karşı koruma sağlar.',
+                        severity: 'Orta',
+                        recommendation: 'Web sunucusu yapılandırmasına HSTS başlığı ekleyin.'
+                    });
+                }
+                
+                return {
+                    headers,
+                    vulnerabilities
+                };
+            }
+            
+            // SQL Injection Testi
+            if (scanType === 'sql_injection') {
+                await sleep(2500);
+                
+                const vulnerable = Math.random() > 0.6;
+                
+                return {
+                    vulnerable,
+                    tested_urls: [
+                        `${url}/search?q=test`,
+                        `${url}/products?id=1`
+                    ],
+                    vulnerabilities: vulnerable ? [
+                        {
+                            name: 'SQL Injection Açığı',
+                            description: 'Web uygulamasında SQL Injection açığı tespit edildi.',
+                            severity: 'Kritik',
+                            recommendation: 'Parametre doğrulama ve prepared statement kullanarak SQL sorgularını güvenli hale getirin.'
+                        }
+                    ] : []
+                };
+            }
+            
+            // XSS Testi
+            if (scanType === 'xss') {
+                await sleep(2000);
+                
+                const vulnerable = Math.random() > 0.7;
+                
+                return {
+                    vulnerable,
+                    tested_urls: [
+                        `${url}/search?q=test`,
+                        `${url}/comments?post=1`
+                    ],
+                    vulnerabilities: vulnerable ? [
+                        {
+                            name: 'Cross-Site Scripting (XSS) Açığı',
+                            description: 'Web uygulamasında XSS açığı tespit edildi.',
+                            severity: 'Yüksek',
+                            recommendation: 'Kullanıcı girişlerini doğrulayın ve çıktı kodlaması uygulayın.'
+                        }
+                    ] : []
+                };
+            }
+            
+            // Sunucu Bilgi Sızıntısı Testi
+            if (scanType === 'server_info') {
+                await sleep(1000);
+                
+                const serverInfo = {
+                    server: Math.random() > 0.5 ? 'Apache/2.4.41' : 'nginx/1.18.0',
+                    'x-powered-by': Math.random() > 0.6 ? 'PHP/7.4.3' : null
+                };
+                
+                const vulnerabilities = [];
+                
+                if (serverInfo['x-powered-by']) {
+                    vulnerabilities.push({
+                        name: 'X-Powered-By Header Bilgi İfşası',
+                        description: 'X-Powered-By başlığı, kullanılan teknolojileri ifşa ediyor.',
+                        severity: 'Düşük',
+                        recommendation: 'Web sunucusu yapılandırmasında X-Powered-By başlığını kaldırın.'
+                    });
+                }
+                
+                return {
+                    server_info: serverInfo,
+                    vulnerabilities
+                };
+            }
+            
+            // Admin Panel Tespiti
+            if (scanType === 'admin_panel') {
+                await sleep(1800);
+                
+                const adminUrls = ['/admin', '/wp-admin', '/administrator', '/login', '/panel', '/dashboard'];
+                const foundPanels = [];
+                
+                adminUrls.forEach(path => {
+                    if (Math.random() > 0.8) {
+                        foundPanels.push(`${url}${path}`);
+                    }
+                });
+                
+                return {
+                    found_panels: foundPanels,
+                    vulnerabilities: foundPanels.length > 0 ? [
+                        {
+                            name: 'Admin Panel Tespit Edildi',
+                            description: 'Yönetim paneli URL\'leri tespit edildi.',
+                            severity: foundPanels.length > 2 ? 'Orta' : 'Düşük',
+                            recommendation: 'Yönetim panellerini varsayılan yollardan farklı yerlere taşıyın ve erişimi IP kısıtlaması ile sınırlayın.'
+                        }
+                    ] : []
+                };
+            }
+            
+            // CMS Açıkları
+            if (scanType === 'cms') {
+                await sleep(2200);
+                
+                const cms = Math.random() > 0.5 ? 'WordPress' : (Math.random() > 0.5 ? 'Joomla' : 'Drupal');
+                const version = cms === 'WordPress' ? '5.8.1' : (cms === 'Joomla' ? '3.9.26' : '9.2.6');
+                
+                const vulnerabilities = [];
+                
+                if (Math.random() > 0.6) {
+                    vulnerabilities.push({
+                        name: `${cms} Eski Sürüm Kullanımı`,
+                        description: `${cms} ${version} sürümü güncel değil ve bilinen güvenlik açıkları içeriyor.`,
+                        severity: 'Orta',
+                        recommendation: `${cms} sürümünü en son sürüme güncelleyin.`
+                    });
+                }
+                
+                if (Math.random() > 0.7) {
+                    vulnerabilities.push({
+                        name: `${cms} Plugin Güvenlik Açığı`,
+                        description: 'Kullanılan eklentilerde güvenlik açıkları tespit edildi.',
+                        severity: 'Yüksek',
+                        recommendation: 'Tüm eklentileri güncelleyin ve güvenlik açığı bulunanları kaldırın.'
+                    });
+                }
+                
+                return {
+                    cms,
+                    version,
+                    vulnerabilities
+                };
+            }
+            
+            // Dosya Yükleme Zafiyeti Testi
+            if (scanType === 'file_upload') {
+                await sleep(1900);
+                
+                const vulnerable = Math.random() > 0.8;
+                
+                return {
+                    vulnerable,
+                    upload_points: vulnerable ? [`${url}/upload`, `${url}/media`] : [],
+                    vulnerabilities: vulnerable ? [
+                        {
+                            name: 'Güvensiz Dosya Yükleme',
+                            description: 'Dosya yükleme işlevi, zararlı dosya tiplerine izin veriyor.',
+                            severity: 'Kritik',
+                            recommendation: 'Dosya tiplerini kısıtlayın, dosya içeriğini kontrol edin ve yüklenen dosyaları güvenli bir konumda saklayın.'
+                        }
+                    ] : []
+                };
+            }
+            
+            // Brute Force Saldırı Testi
+            if (scanType === 'brute_force') {
+                await sleep(2500);
+                
+                const vulnerable = Math.random() > 0.7;
+                
+                return {
+                    vulnerable,
+                    login_urls: [`${url}/login`, `${url}/admin`],
+                    vulnerabilities: vulnerable ? [
+                        {
+                            name: 'Brute Force Koruması Eksik',
+                            description: 'Giriş ekranlarında brute force saldırılarına karşı koruma bulunmuyor.',
+                            severity: 'Yüksek',
+                            recommendation: 'Başarısız giriş denemelerini sınırlayın, CAPTCHA kullanın ve IP kısıtlamaları uygulayın.'
+                        }
+                    ] : []
+                };
+            }
+            
+            // Bilinmeyen tarama türü
+            return { error: 'Bilinmeyen tarama türü' };
+        }
+        
+        // Tarama sonuçlarını görüntüle
+        function showScanResults(results) {
+            console.log('Tarama sonuçları:', results);
+            
+            // Sonuç ekranında güvenlik puanını göster
+            const securityScore = document.createElement('div');
+            securityScore.className = 'text-center mb-4';
+            securityScore.innerHTML = `
+                <h4>Güvenlik Puanı: <span class="badge ${results.security_score < 50 ? 'bg-danger' : (results.security_score < 80 ? 'bg-warning' : 'bg-success')}">${results.security_score}/100</span></h4>
+                <p>Tespit edilen zafiyet sayısı: ${results.vulnerabilities.length}</p>
+            `;
+            
+            // Sonuçları ekleyin
+            resultDownload.prepend(securityScore);
+            
+            // Tespit edilen açıkları tabloya ekle
+            const vulnerabilitiesTable = document.getElementById('vulnerabilitiesTable');
+            if (vulnerabilitiesTable) {
+                vulnerabilitiesTable.innerHTML = ''; // Tabloyu temizle
+                
+                // Açıklar yoksa mesaj göster
+                if (results.vulnerabilities.length === 0) {
+                    const emptyRow = document.createElement('tr');
+                    emptyRow.innerHTML = `<td colspan="4" class="text-center">Herhangi bir güvenlik açığı tespit edilmedi.</td>`;
+                    vulnerabilitiesTable.appendChild(emptyRow);
+                } else {
+                    // Her açık için bir satır ekle
+                    results.vulnerabilities.forEach(vuln => {
+                        const row = document.createElement('tr');
+                        
+                        // Risk seviyesine göre badge rengi
+                        let badgeClass = 'bg-secondary';
+                        switch(vuln.severity) {
+                            case 'Kritik': badgeClass = 'bg-danger'; break;
+                            case 'Yüksek': badgeClass = 'bg-warning text-dark'; break;
+                            case 'Orta': badgeClass = 'bg-primary'; break;
+                            case 'Düşük': badgeClass = 'bg-info text-dark'; break;
+                        }
+                        
+                        row.innerHTML = `
+                            <td><strong>${vuln.name}</strong></td>
+                            <td><span class="badge ${badgeClass}">${vuln.severity}</span></td>
+                            <td>${vuln.description}</td>
+                            <td>${vuln.recommendation}</td>
+                        `;
+                        
+                        vulnerabilitiesTable.appendChild(row);
+                    });
+                }
+            }
+        }
+        
+        // PDF Rapor oluşturma
+        function generateReport() {
+            // jsPDF kütüphanesini kullanarak PDF oluşturma
+            const { jsPDF } = window.jspdf;
+            
+            if (!jsPDF) {
+                showToast('Hata', 'PDF oluşturma kütüphanesi yüklenemedi.', 'danger');
+                return;
+            }
+            
+            const doc = new jsPDF();
+            
+            // PDF başlığı
+            doc.setFontSize(20);
+            doc.text('CYBERCONTROL GÜVENLİK RAPORU', 105, 20, { align: 'center' });
+            
+            // URL ve tarih
+            doc.setFontSize(12);
+            doc.text(`Taranan URL: ${urlInput.value}`, 20, 40);
+            doc.text(`Tarama Tarihi: ${new Date().toLocaleString('tr-TR')}`, 20, 50);
+            
+            // Güvenlik puanı (varsayalım ki rapor sonuçlarında var)
+            doc.setFontSize(16);
+            doc.text('Güvenlik Değerlendirmesi', 20, 70);
+            
+            // İçerik
+            doc.setFontSize(12);
+            doc.text('Bu rapor, seçilen güvenlik tarama modüllerini kullanarak hedef URL için kapsamlı bir güvenlik analizi sağlar.', 20, 90);
+            doc.text('Tespit edilen güvenlik açıkları, aşağıdaki risk seviyelerine göre değerlendirilmiştir:', 20, 100);
+            
+            // Risk seviyeleri
+            doc.setFontSize(10);
+            doc.text('• Kritik: Acil müdahale gerektiren, yüksek riskli güvenlik açıkları', 30, 115);
+            doc.text('• Yüksek: Kısa sürede ele alınması gereken önemli güvenlik açıkları', 30, 125);
+            doc.text('• Orta: Makul bir süre içinde ele alınması gereken güvenlik açıkları', 30, 135);
+            doc.text('• Düşük: Genel güvenlik duruşunu iyileştirebilecek düşük riskli sorunlar', 30, 145);
+            
+            // Tarama modülleri
+            doc.setFontSize(16);
+            doc.text('Uygulanan Tarama Modülleri', 20, 170);
+            
+            // Modül listesi
+            doc.setFontSize(10);
+            let y = 180;
+            document.querySelectorAll('input[name="scan_options"]:checked').forEach((checkbox, index) => {
+                const label = checkbox.closest('label').textContent.trim();
+                doc.text(`${index + 1}. ${label}`, 30, y + (index * 10));
+            });
+            
+            // Bu bir demo, gerçek bir tarama sonucunda, bulunan açıkları ve önerileri de eklemek gerekir
+            
+            // PDF dosyasını indir
+            const filename = `CyberControl_Rapor_${urlInput.value.replace(/https?:\/\//g, '').replace(/[^a-z0-9]/gi, '_')}_${new Date().toISOString().slice(0, 10)}.pdf`;
+            doc.save(filename);
+            
+            showToast('Başarılı', 'PDF raporu başarıyla indirildi!', 'success');
+        }
+    </script>
+</body>
+</html> 

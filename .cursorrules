@@ -1,0 +1,63 @@
+# CursorRules.txt
+# Cursor tarafından uygulanacak ileri seviye siber güvenlik testleri
+
+1. SSL/TLS Güvenlik Testi
+   - HTTPS sertifikası kontrolü
+   - SSL sertifika geçerlilik tarihi kontrolü
+   - Zayıf şifreleme algoritması tespiti
+
+2. Açık Port Taraması
+   - İlk 1000 yaygın portun taranması
+   - Full TCP/UDP port aralığı taraması
+
+3. HTTP Güvenlik Header Testi
+   - HSTS (Strict-Transport-Security) kontrolü
+   - X-Frame-Options kontrolü
+   - Content-Security-Policy kontrolü
+   - X-XSS-Protection kontrolü
+
+4. SQL Injection Testi
+   - URL parametrelerine temel SQL enjeksiyonu denemeleri
+   - UNION tabanlı SQL Injection tespiti
+   - Time-Based Blind SQL Injection tespiti
+
+5. XSS (Cross Site Scripting) Testi
+   - Form alanlarında basit XSS payload testleri
+   - Gelişmiş DOM tabanlı XSS testleri
+
+6. Sunucu Bilgi Sızıntısı Testi
+   - Server HTTP Header kontrolü
+   - X-Powered-By gibi bilgi sızdıran headerların kontrolü
+
+7. Admin Panel Tespiti
+   - Yaygın admin panel URL’leri taraması (/admin, /wp-admin, /login vb.)
+   - Admin panel brute-force giriş testleri
+
+8. CMS (WordPress, Joomla, vb.) Açıkları
+   - CMS türünün tespiti
+   - CMS sürüm ve eklenti açıklarının taranması
+
+9. Dosya Yükleme Zafiyeti Testi
+   - Upload alanlarına zararlı dosya yükleme denemeleri
+   - Upload edilen dosya içeriklerinin yürütülüp yürütülemediğinin kontrolü
+
+10. Brute Force Saldırı Testi
+    - Kullanıcı adı ve şifre kombinasyonları ile kaba kuvvet saldırısı
+    - CAPTCHA varlığının ve koruma mekanizmalarının tespiti
+
+11. TARAMA SONUCU PDF RAPOR OLUŞTURMA
+    - Yapılan tüm testler ve sonuçları sistem tarafından otomatik toplanır.
+    - Tespit edilen açıklıklar, eksikler ve güvenlik sorunları özetlenir.
+    - Risk seviyeleri belirlenir (Düşük, Orta, Yüksek, Kritik).
+    - Başlıklar:
+        - Testin adı
+        - Hedef URL
+        - Test sonucu (Başarılı / Başarısız / Açık Tespit Edildi)
+        - Risk Seviyesi
+        - Açıklama ve Öneri
+    - Sonuçlar şık ve okunabilir bir PDF dosyasına dönüştürülür.
+    - Kullanıcıya rapor dosyası indirme seçeneği sunulur.
+
+# Not: Tüm testlerde loglama ve sessiz modda çalışılmalıdır.
+# Not: PDF raporda gizlilik, bütünlük ve doğruluk prensiplerine dikkat edilmelidir.
+# Not: Saldırgan amaçlı kullanım değil, siber güvenlik testi amaçlıdır.
