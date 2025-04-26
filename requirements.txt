@@ -2,7 +2,7 @@ Flask==2.0.1
 requests==2.26.0
 BeautifulSoup4==4.10.0
 reportlab==3.6.1
-matplotlib==3.4.3
+# matplotlib==3.4.3 Netlify deployment sorununa neden olduğu için kaldırıldı
 urllib3==1.26.7
 python-nmap==0.7.1
 pyOpenSSL==21.0.0
@@ -12,4 +12,5 @@ Jinja2==3.0.1
 itsdangerous==2.0.1
 click==8.0.1
 MarkupSafe==2.0.1
-pillow==8.3.2 
+pillow==8.3.2
+configparser>=5.0.0  # Eski SafeConfigParser kullanım hatasını önlemek için 
