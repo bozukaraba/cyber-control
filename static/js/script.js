@@ -48,7 +48,81 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Form gönderildiğinde işlem yap
     if (scanForm) {
-        scanForm.addEventListener('submit', handleScanSubmit);
+        scanForm.addEventListener('submit', async function(e) {
+            e.preventDefault(); // Sayfanın yenilenmesini engelle
+            
+            // URL kontrolü
+            const url = urlInput.value.trim();
+            if (!url) {
+                showToast('Hata', 'Lütfen hedef URL giriniz', 'error');
+                return;
+            }
+            
+            if (!url.match(/^https?:\/\/.+/)) {
+                showToast('Hata', 'Lütfen geçerli bir URL giriniz (http:// veya https:// ile başlamalı)', 'error');
+                return;
+            }
+            
+            // Seçili testleri al
+            const selectedTests = {
+                ssl: document.getElementById('sslCheck').checked,
+                port: document.getElementById('portCheck').checked,
+                header: document.getElementById('headerCheck').checked,
+                sql: document.getElementById('sqlCheck').checked,
+                xss: document.getElementById('xssCheck').checked,
+                info: document.getElementById('infoCheck').checked,
+                admin: document.getElementById('adminCheck').checked,
+                cms: document.getElementById('cmsCheck').checked,
+                upload: document.getElementById('uploadCheck').checked,
+                brute: document.getElementById('bruteCheck').checked
+            };
+            
+            // En az bir test seçili mi kontrol et
+            if (!Object.values(selectedTests).some(value => value)) {
+                showToast('Uyarı', 'Lütfen en az bir tarama seçeneği seçiniz', 'warning');
+                return;
+            }
+            
+            try {
+                // Tarama modalını göster
+                const scanModal = new bootstrap.Modal(document.getElementById('scanModal'));
+                scanModal.show();
+                
+                // Progress bar'ı sıfırla
+                const progressBar = document.querySelector('.progress-bar');
+                progressBar.style.width = '0%';
+                progressBar.setAttribute('aria-valuenow', '0');
+                
+                // Seçili testleri sırayla çalıştır
+                let progress = 0;
+                const increment = 100 / Object.values(selectedTests).filter(v => v).length;
+                
+                for (const [test, isSelected] of Object.entries(selectedTests)) {
+                    if (isSelected) {
+                        // Test durumunu güncelle
+                        document.getElementById('currentTest').textContent = getTestName(test);
+                        
+                        // Test simülasyonu (gerçek API çağrısı burada yapılacak)
+                        await simulateTest(test, url);
+                        
+                        // Progress bar'ı güncelle
+                        progress += increment;
+                        progressBar.style.width = `${progress}%`;
+                        progressBar.setAttribute('aria-valuenow', progress);
+                    }
+                }
+                
+                // Taramayı tamamla
+                setTimeout(() => {
+                    scanModal.hide();
+                    showResults();
+                }, 1000);
+                
+            } catch (error) {
+                console.error('Tarama hatası:', error);
+                showToast('Hata', 'Tarama sırasında bir hata oluştu', 'error');
+            }
+        });
     }
     
     // PDF Rapor indirme işlemi
@@ -115,62 +189,95 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
+// Test adını döndür
+function getTestName(test) {
+    const names = {
+        ssl: 'SSL/TLS Güvenlik Testi',
+        port: 'Açık Port Taraması',
+        header: 'HTTP Güvenlik Header Testi',
+        sql: 'SQL Injection Testi',
+        xss: 'XSS Testi',
+        info: 'Sunucu Bilgi Sızıntısı Testi',
+        admin: 'Admin Panel Tespiti',
+        cms: 'CMS Zafiyet Taraması',
+        upload: 'Dosya Yükleme Zafiyeti Testi',
+        brute: 'Brute Force Saldırı Testi'
+    };
+    return names[test] || test;
+}
+
+// Test simülasyonu
+async function simulateTest(test, url) {
+    return new Promise(resolve => {
+        setTimeout(resolve, Math.random() * 1000 + 500);
+    });
+}
+
+// Sonuçları göster
+function showResults() {
+    const resultModal = new bootstrap.Modal(document.getElementById('resultModal'));
+    
+    // Örnek sonuçlar
+    const results = [
+        {
+            test: 'SSL/TLS Güvenlik Testi',
+            status: 'Güvenli',
+            details: 'SSL sertifikası geçerli ve güncel.'
+        },
+        {
+            test: 'Açık Port Taraması',
+            status: 'Uyarı',
+            details: '80 ve 443 portları dışında açık port tespit edilmedi.'
+        }
+    ];
+    
+    // Sonuçları HTML olarak oluştur
+    const resultsHtml = results.map(result => `
+        <div class="alert ${result.status === 'Güvenli' ? 'alert-success' : 'alert-warning'} mb-3">
+            <h5 class="alert-heading">${result.test}</h5>
+            <p class="mb-0">${result.details}</p>
+        </div>
+    `).join('');
+    
+    // Sonuçları modalda göster
+    document.getElementById('scanResults').innerHTML = resultsHtml;
+    resultModal.show();
+}
+
 // Toast mesajı göster
-function showToast(title, message, type = 'info') {
-    const toastContainer = document.getElementById('toastContainer');
-    if (!toastContainer) return;
-    
-    // Toast classları için tip
-    const bgClass = {
-        'success': 'bg-success',
-        'error': 'bg-danger',
-        'warning': 'bg-warning',
-        'info': 'bg-info'
-    }[type] || 'bg-info';
-    
-    // İkon tipine göre
-    const iconClass = {
-        'success': 'bi-check-circle-fill',
-        'error': 'bi-exclamation-triangle-fill',
-        'warning': 'bi-exclamation-circle-fill',
-        'info': 'bi-info-circle-fill'
-    }[type] || 'bi-info-circle-fill';
-    
-    // Toast HTML'i
+function showToast(title, message, type) {
+    // Bootstrap toast oluştur
     const toastHtml = `
-        <div class="toast" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="5000">
-            <div class="toast-header ${bgClass} text-white">
-                <i class="bi ${iconClass} me-2"></i>
-                <strong class="me-auto">${title}</strong>
-                <small>Şimdi</small>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Kapat"></button>
-            </div>
-            <div class="toast-body">
-                ${message}
+        <div class="toast align-items-center text-white bg-${type === 'error' ? 'danger' : type} border-0" 
+             role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body">
+                    <strong>${title}</strong><br>${message}
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
             </div>
         </div>
     `;
     
-    // Toast elementini oluştur
-    const toastElement = document.createElement('div');
-    toastElement.innerHTML = toastHtml;
+    // Toast container oluştur
+    let container = document.getElementById('toastContainer');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toastContainer';
+        container.className = 'toast-container position-fixed top-0 end-0 p-3';
+        document.body.appendChild(container);
+    }
     
-    // Toast'ı container'a ekle
-    toastContainer.appendChild(toastElement.firstElementChild);
-    
-    // Bootstrap Toast nesnesini oluştur ve göster
-    const toast = new bootstrap.Toast(toastContainer.lastElementChild);
+    // Toast'ı ekle ve göster
+    container.insertAdjacentHTML('beforeend', toastHtml);
+    const toastElement = container.lastElementChild;
+    const toast = new bootstrap.Toast(toastElement);
     toast.show();
     
-    // Belirli bir süre sonra toast'ı kaldır
-    setTimeout(() => {
-        toast.hide();
-        setTimeout(() => {
-            if (toastContainer.contains(toastContainer.lastElementChild)) {
-                toastContainer.removeChild(toastContainer.lastElementChild);
-            }
-        }, 500);
-    }, 5000);
+    // Toast'ı otomatik kaldır
+    toastElement.addEventListener('hidden.bs.toast', () => {
+        toastElement.remove();
+    });
 }
 
 // URL doğrulama fonksiyonu
@@ -779,80 +886,6 @@ function finishScan() {
         // Başarı mesajı göster
         showToast('Başarılı', 'Tarama tamamlandı! Sonuçlar hazırlandı.', 'success');
     }, 1000);
-}
-
-// Form gönderim işlemi
-function handleScanSubmit(e) {
-    e.preventDefault();
-    
-    // Form validasyonu
-    if (!validateForm()) {
-        return false;
-    }
-    
-    // URL'i al
-    const url = urlInput.value.trim();
-    
-    // Seçilen testleri al
-    const selectedTests = [];
-    document.querySelectorAll('input[name="scan_options"]:checked').forEach(checkbox => {
-        selectedTests.push(checkbox.id);
-    });
-    
-    // Hiç test seçilmemişse uyarı ver
-    if (selectedTests.length === 0) {
-        showToast('Uyarı', 'En az bir tarama seçeneği seçmelisiniz', 'warning');
-        return false;
-    }
-    
-    // Taramayı başlat
-    startScan(url, selectedTests);
-    
-    return false;
-}
-
-// Formun doğrulamasını yap
-function validateForm() {
-    // URL'i kontrol et
-    const url = urlInput.value.trim();
-    
-    if (!url) {
-        showToast('Hata', 'URL alanı boş bırakılamaz', 'danger');
-        urlInput.focus();
-        return false;
-    }
-    
-    if (!isValidUrl(url)) {
-        showToast('Hata', 'Geçerli bir URL adresi girin (https://ornek.com)', 'danger');
-        urlInput.focus();
-        return false;
-    }
-    
-    return true;
-}
-
-// URL geçerliliği kontrolü
-function isValidUrl(string) {
-    try {
-        new URL(string);
-        return true;
-    } catch (err) {
-        return false;
-    }
-}
-
-// Taramayı başlat
-function startScan(url, selectedTests) {
-    // Tarama sonuçları bölümünü gizle (önceki sonuçlar varsa)
-    if (resultsSection) {
-        resultsSection.classList.add('d-none');
-    }
-    
-    // Tarama başlatma bilgisi
-    showToast('Bilgi', 'Tarama başlatılıyor...', 'primary');
-    
-    // Simüle edilmiş tarama işlemini başlat
-    simulateScanProcess(url, selectedTests);
 }
 
 // Tüm checkboxları seç
