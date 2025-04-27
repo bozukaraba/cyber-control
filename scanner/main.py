@@ -13,12 +13,13 @@ from modules.brute_force_scanner import BruteForceScanner
 warnings.filterwarnings("ignore")
 urllib3.disable_warnings()
 
-def main():
-    if len(sys.argv) != 2:
-        print("Kullanım: python3 main.py <hedef_url>")
-        sys.exit(1)
-        
-    target_url = sys.argv[1]
+def main(target_url=None):
+    if target_url is None:
+        if len(sys.argv) != 2:
+            print("Kullanım: python3 main.py <hedef_url>")
+            return None
+        target_url = sys.argv[1]
+    
     results = []
     
     # Admin Panel Taraması
@@ -78,6 +79,8 @@ def main():
     with open('scan_results.json', 'w', encoding='utf-8') as f:
         json.dump(results, f, ensure_ascii=False, indent=4)
     print(f"\n[+] Sonuçlar scan_results.json dosyasına kaydedildi.")
+    
+    return results
 
 if __name__ == "__main__":
     try:
@@ -87,4 +90,4 @@ if __name__ == "__main__":
         sys.exit(0)
     except Exception as e:
         print(f"\n[!] Hata: {str(e)}")
-        sys.exit(1) 
+        sys.exit(1)
