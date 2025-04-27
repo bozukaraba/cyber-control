@@ -17,4 +17,5 @@ tld==0.13.4
 urllib3==2.2.1
 paramiko==3.4.0
 shodan==1.31.0
-censys==2.2.9 
+censys==2.2.9
+gunicorn==21.2.0 
