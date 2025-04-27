@@ -1,14 +1,5 @@
 [build]
-  command = "chmod +x build.sh && ./build.sh"
-  publish = "dist"
-
-[build.environment]
-  NODE_VERSION = "18"
-
-[[redirects]]
-  from = "/api/*"
-  to = "/.netlify/functions/:splat"
-  status = 200
+  publish = "templates"
 
 [[redirects]]
   from = "/*"
