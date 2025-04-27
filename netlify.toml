@@ -1,15 +1,18 @@
 [build]
-  command = "pip install -r requirements.txt && npm install"
-  publish = "."
-  functions = "netlify/functions"
+  command = "chmod +x build.sh && ./build.sh"
+  publish = "dist"
 
 [build.environment]
-  PYTHON_VERSION = "3.9"
   NODE_VERSION = "18"
 
 [[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
+[[redirects]]
   from = "/*"
-  to = "/.netlify/functions/app"
+  to = "/index.html"
   status = 200
 
 [functions]

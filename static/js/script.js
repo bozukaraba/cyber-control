@@ -214,7 +214,7 @@ function isValidUrl(string) {
     }
 }
 
-// Tarama sürecini çalıştırma fonksiyonu
+// Tarama işlemini çalıştırma fonksiyonu
 async function runScanProcess(url, options) {
     try {
         // Yükleme göstergesini göster
@@ -224,16 +224,16 @@ async function runScanProcess(url, options) {
         // Simüle edilmiş süreç
         const result = await simulateScanProcess(url, options);
         
-        // Gerçek tarama işlemi (normalde bir API'ye istek atılır)
-        const formData = new FormData();
-        formData.append('url', url);
-        options.forEach(option => {
-            formData.append('scan_options[]', option);
-        });
-        
-        const response = await fetch('/scan', {
+        // API çağrısı
+        const response = await fetch('/.netlify/functions/scan', {
             method: 'POST',
-            body: formData
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                targetUrl: url,
+                scanOptions: options
+            })
         });
         
         if (!response.ok) {
