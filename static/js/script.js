@@ -1,24 +1,31 @@
-// DOM elementlerini seç
-const scanForm = document.getElementById('scanForm');
-const selectAllBtn = document.getElementById('selectAllBtn');
-const deselectAllBtn = document.getElementById('deselectAllBtn');
-const resultsSection = document.getElementById('resultsSection');
-const loadingIndicator = document.getElementById('loadingIndicator');
-const resultDownload = document.getElementById('resultDownload');
-const downloadBtn = document.getElementById('downloadBtn');
-const currentScan = document.getElementById('currentScan');
-const scanProgress = document.getElementById('scanProgress');
-const aboutBtn = document.getElementById('aboutBtn');
-const aboutModal = document.getElementById('aboutModal');
-const urlInput = document.getElementById('url');
-const toastContainer = document.getElementById('toastContainer');
+// DOM elementlerini tanımla
+let scanForm, urlInput, scanProgress, currentScan, loadingIndicator, scanStatusContainer, resultsSection, vulnerabilitiesTable, downloadBtn, aboutModal, aboutBtn, selectAllBtn, deselectAllBtn;
 
 // Tüm checkboxları seç
 const checkboxes = document.querySelectorAll('input[name="scan_options"]');
 
+// Tarama durumu
+let isScanning = false;
+
 // DOM yüklendikten sonra çalışacak kodlar
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOM yüklendi!');
+    
+    // DOM elementlerini seç
+    scanForm = document.getElementById('scanForm');
+    urlInput = document.getElementById('url');
+    scanProgress = document.querySelector('.progress-bar');
+    currentScan = document.getElementById('currentScan');
+    loadingIndicator = document.getElementById('loadingIndicator');
+    scanStatusContainer = document.getElementById('scanStatusContainer');
+    resultsSection = document.getElementById('resultsSection');
+    vulnerabilitiesTable = document.getElementById('vulnerabilitiesTable');
+    downloadBtn = document.getElementById('downloadBtn');
+    aboutModal = document.getElementById('aboutModal');
+    aboutBtn = document.getElementById('aboutBtn');
+    selectAllBtn = document.getElementById('selectAllBtn');
+    deselectAllBtn = document.getElementById('deselectAllBtn');
+    
     // Sayfanın yükleme animasyonu
     document.body.classList.add('loaded');
     
@@ -38,12 +45,27 @@ document.addEventListener('DOMContentLoaded', function() {
             trigger: 'focus'
         });
     }
-
-    // Hoş geldin bildirimi
-    setTimeout(() => {
-        showToast('Hoş Geldiniz', 'Cursor Siber Güvenlik Tarama Aracına hoş geldiniz! Taramaya başlamak için bir URL girin.', 'primary');
-    }, 1000);
-
+    
+    // Form gönderildiğinde işlem yap
+    if (scanForm) {
+        scanForm.addEventListener('submit', handleScanSubmit);
+    }
+    
+    // PDF Rapor indirme işlemi
+    if (downloadBtn) {
+        downloadBtn.addEventListener('click', generatePDFReport);
+    }
+    
+    // Tümünü Seç butonu işlevi
+    if (selectAllBtn) {
+        selectAllBtn.addEventListener('click', selectAllCheckboxes);
+    }
+    
+    // Tümünü Kaldır butonu işlevi
+    if (deselectAllBtn) {
+        deselectAllBtn.addEventListener('click', deselectAllCheckboxes);
+    }
+    
     // Modal yönetimi için Bootstrap modal kullan
     if (aboutModal && aboutBtn && typeof bootstrap !== 'undefined') {
         const bsAboutModal = new bootstrap.Modal(aboutModal);
@@ -54,6 +76,11 @@ document.addEventListener('DOMContentLoaded', function() {
             bsAboutModal.show();
         });
     }
+
+    // Hoş geldin bildirimi
+    setTimeout(() => {
+        showToast('Hoş Geldiniz', 'Siber Güvenlik Tarama Aracına hoş geldiniz! Taramaya başlamak için bir URL girin.', 'info');
+    }, 1000);
 
     // Tümünü Seç butonu işlevi
     if (selectAllBtn && checkboxes.length > 0) {
@@ -75,119 +102,74 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Form gönderildiğinde işlem yap
-    if (scanForm) {
-        scanForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            // Form doğrulama
-            if (!validateForm()) {
-                return;
-            }
-
-            // Form verilerini al
-            const url = urlInput ? urlInput.value.trim() : '';
-            
-            // Seçilen tarama seçeneklerini topla
-            const selectedOptions = [];
-            document.querySelectorAll('input[name="scan_options"]:checked').forEach(checkbox => {
-                selectedOptions.push(checkbox.id);
-            });
-            
-            if (selectedOptions.length === 0) {
-                showToast('Uyarı', 'Lütfen en az bir tarama seçeneği seçin', 'warning');
-                return;
-            }
-            
-            try {
-                // Tarama işlemini başlat
-                const result = await runScanProcess(url, selectedOptions);
-                
-                // Tarama sonuçlarını görüntüle
-                if (typeof displayScanResults === 'function') {
-                    displayScanResults(result);
-                }
-            } catch (error) {
-                // Hata durumunda bildirim göster
-                showToast('Hata', `Tarama sırasında bir hata oluştu: ${error.message}`, 'danger');
-                console.error('Tarama hatası:', error);
-            }
-        });
-    }
-
-    // PDF Rapor indirme işlemi
-    if (downloadBtn) {
-        downloadBtn.addEventListener('click', function() {
-            const url = urlInput ? urlInput.value : 'ornek.com';
-            const now = new Date();
-            const dateStr = now.toISOString().slice(0, 10);
-            const fileName = `siber_guvenlik_raporu_${url.replace(/^https?:\/\//, '').replace(/[^\w]/g, '_')}_${dateStr}.pdf`;
-            
-            // PDF indirme işlemini simüle et
-            showToast('Bilgi', 'PDF Raporu indiriliyor...', 'info');
-            
-            // PDF blob nesnesini oluştur ve indir
-            setTimeout(() => {
-                // Boş bir PDF (gerçek uygulamada burada gerçek PDF veri oluşturma kodu olacak)
-                const pdfBlob = new Blob(['PDF rapor içeriği burada olacak'], { type: 'application/pdf' });
-                const downloadLink = document.createElement('a');
-                downloadLink.href = URL.createObjectURL(pdfBlob);
-                downloadLink.download = fileName;
-                document.body.appendChild(downloadLink);
-                downloadLink.click();
-                document.body.removeChild(downloadLink);
-                
-                showToast('Başarılı', 'PDF Raporu başarıyla indirildi!', 'success');
-            }, 1500);
-        });
-    }
-});
-
-// Toast bildirimlerini gösterme
-function showToast(title, message, type = 'info') {
-    if (!toastContainer) return;
-    
-    const toast = document.createElement('div');
-    toast.className = `toast align-items-center border-0 bg-${type}`;
-    toast.setAttribute('role', 'alert');
-    toast.setAttribute('aria-live', 'assertive');
-    toast.setAttribute('aria-atomic', 'true');
-    
-    const toastHeader = document.createElement('div');
-    toastHeader.className = 'toast-header';
-    
-    const strongTitle = document.createElement('strong');
-    strongTitle.className = 'me-auto';
-    strongTitle.textContent = title;
-    
-    const closeButton = document.createElement('button');
-    closeButton.type = 'button';
-    closeButton.className = 'btn-close';
-    closeButton.setAttribute('data-bs-dismiss', 'toast');
-    closeButton.setAttribute('aria-label', 'Kapat');
-    
-    toastHeader.appendChild(strongTitle);
-    toastHeader.appendChild(closeButton);
-    
-    const toastBody = document.createElement('div');
-    toastBody.className = 'toast-body text-white';
-    toastBody.textContent = message;
-    
-    toast.appendChild(toastHeader);
-    toast.appendChild(toastBody);
-    
-    toastContainer.appendChild(toast);
-    
-    const bsToast = new bootstrap.Toast(toast, {
-        autohide: true,
-        delay: 4000
+    // Bootstrap tooltip'leri aktifleştir
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
     });
     
-    bsToast.show();
+    // Bootstrap popover'ları aktifleştir
+    const popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'));
+    popoverTriggerList.map(function (popoverTriggerEl) {
+        return new bootstrap.Popover(popoverTriggerEl);
+    });
+});
+
+// Toast mesajı göster
+function showToast(title, message, type = 'info') {
+    const toastContainer = document.getElementById('toastContainer');
+    if (!toastContainer) return;
     
-    // 5 saniye sonra toast'u kaldır
+    // Toast classları için tip
+    const bgClass = {
+        'success': 'bg-success',
+        'error': 'bg-danger',
+        'warning': 'bg-warning',
+        'info': 'bg-info'
+    }[type] || 'bg-info';
+    
+    // İkon tipine göre
+    const iconClass = {
+        'success': 'bi-check-circle-fill',
+        'error': 'bi-exclamation-triangle-fill',
+        'warning': 'bi-exclamation-circle-fill',
+        'info': 'bi-info-circle-fill'
+    }[type] || 'bi-info-circle-fill';
+    
+    // Toast HTML'i
+    const toastHtml = `
+        <div class="toast" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="5000">
+            <div class="toast-header ${bgClass} text-white">
+                <i class="bi ${iconClass} me-2"></i>
+                <strong class="me-auto">${title}</strong>
+                <small>Şimdi</small>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Kapat"></button>
+            </div>
+            <div class="toast-body">
+                ${message}
+            </div>
+        </div>
+    `;
+    
+    // Toast elementini oluştur
+    const toastElement = document.createElement('div');
+    toastElement.innerHTML = toastHtml;
+    
+    // Toast'ı container'a ekle
+    toastContainer.appendChild(toastElement.firstElementChild);
+    
+    // Bootstrap Toast nesnesini oluştur ve göster
+    const toast = new bootstrap.Toast(toastContainer.lastElementChild);
+    toast.show();
+    
+    // Belirli bir süre sonra toast'ı kaldır
     setTimeout(() => {
-        toast.remove();
+        toast.hide();
+        setTimeout(() => {
+            if (toastContainer.contains(toastContainer.lastElementChild)) {
+                toastContainer.removeChild(toastContainer.lastElementChild);
+            }
+        }, 500);
     }, 5000);
 }
 
@@ -223,11 +205,11 @@ function validateForm() {
 }
 
 // URL doğrulama fonksiyonu
-function isValidUrl(url) {
+function isValidUrl(string) {
     try {
-        const urlObj = new URL(url);
-        return urlObj.protocol === 'http:' || urlObj.protocol === 'https:';
-    } catch (e) {
+        const url = new URL(string);
+        return url.protocol === 'http:' || url.protocol === 'https:';
+    } catch (_) {
         return false;
     }
 }
@@ -240,7 +222,7 @@ async function runScanProcess(url, options) {
         if (resultsSection) resultsSection.style.display = 'none';
         
         // Simüle edilmiş süreç
-        await simulateScanProcess(url, options);
+        const result = await simulateScanProcess(url, options);
         
         // Gerçek tarama işlemi (normalde bir API'ye istek atılır)
         const formData = new FormData();
@@ -272,241 +254,689 @@ async function runScanProcess(url, options) {
     }
 }
 
-// Tarama işlemini simüle eden fonksiyon
-async function simulateScanProcess(url, options) {
-    const scanStages = [
-        'SSL/TLS güvenlik testi yapılıyor...',
-        'Açık port taraması gerçekleştiriliyor...',
-        'HTTP güvenlik başlıkları kontrol ediliyor...',
-        'SQL Injection testleri yapılıyor...',
-        'XSS testleri yapılıyor...',
-        'Sunucu bilgi sızıntıları kontrol ediliyor...',
-        'Admin panel tespiti yapılıyor...',
-        'CMS açıkları taranıyor...',
-        'Dosya yükleme zafiyetleri test ediliyor...',
-        'Brute force saldırı testi yapılıyor...',
-        'Sonuçlar hazırlanıyor ve rapor oluşturuluyor...'
-    ];
-
-    // Tarama seçeneklerine göre filtreleme yapalım
-    const stagesToRun = scanStages.filter((_, index) => {
-        // Tüm seçenekler seçilmediyse ve bu bir seçenek ise
-        if (options.length === 0 || (index < options.length && options[index])) {
-            return true;
-        }
-        return false;
-    });
-
-    const totalStages = stagesToRun.length;
+// Tarama işlemini simüle et
+function simulateScanProcess(url, selectedTests) {
+    // Tarama modalını göster
+    const scanModal = document.getElementById('scanModal');
+    if (scanModal) {
+        scanModal.classList.remove('d-none');
+    }
     
-    for (let i = 0; i < totalStages; i++) {
-        // Mevcut taramayı güncelle
-        updateScanStatus(stagesToRun[i], (i + 1) / totalStages * 100);
+    // Progress bar ve durum bilgisi elementleri
+    const progressBar = document.querySelector('.progress-bar');
+    const scanStatus = document.getElementById('scanStatus');
+    const scanStep = document.getElementById('scanStep');
+    
+    if (progressBar) {
+        progressBar.style.width = '0%';
+        progressBar.classList.add('progress-bar-animated');
+    }
+    
+    if (scanStatus) {
+        scanStatus.textContent = 'Hazırlanıyor...';
+    }
+    
+    if (scanStep) {
+        scanStep.textContent = 'Hedef URL analiz ediliyor';
+    }
+    
+    // Adım 1
+    setTimeout(() => {
+        updateScanStatus(1);
         
-        // Bu adımın tamamlanması için bekle (gerçek bir tarama için API çağrısı yapılacak)
-        await sleep(Math.random() * 1000 + 500); // 500ms - 1.5s arası rastgele bekleme
+        // Adım 2
+        setTimeout(() => {
+            updateScanStatus(2);
+            
+            // Adım 3
+            setTimeout(() => {
+                updateScanStatus(3);
+                
+                // Adım 4
+                setTimeout(() => {
+                    updateScanStatus(4);
+                    
+                    // Adım 5
+                    setTimeout(() => {
+                        updateScanStatus(5);
+                        
+                        // Adım 6
+                        setTimeout(() => {
+                            updateScanStatus(6);
+                        }, 2000);
+                    }, 2500);
+                }, 2000);
+            }, 2500);
+        }, 2000);
+    }, 1500);
+}
+
+// Tarama durumunu güncelle
+function updateScanStatus(step, isError = false) {
+    // Progress bar ve durum bilgisi elementleri
+    const progressBar = document.querySelector('.progress-bar');
+    const scanStatus = document.getElementById('scanStatus');
+    const scanStep = document.getElementById('scanStep');
+    const scanModal = document.getElementById('scanModal');
+    const resultsSection = document.getElementById('resultsSection');
+    
+    // Progress bar'ı güncelle
+    if (!isError) {
+        switch (step) {
+            case 1: // Başlangıç
+                progressBar.style.width = '10%';
+                scanStatus.textContent = 'Tarama başlatılıyor...';
+                scanStep.textContent = 'Başlangıç kontrolleri yapılıyor';
+                break;
+            case 2: // Port tarama
+                progressBar.style.width = '25%';
+                scanStatus.textContent = 'Devam ediyor...';
+                scanStep.textContent = 'Açık portlar taranıyor';
+                break;
+            case 3: // Servis tarama
+                progressBar.style.width = '40%';
+                scanStatus.textContent = 'Devam ediyor...';
+                scanStep.textContent = 'Servis ve sürüm bilgileri tespit ediliyor';
+                break;
+            case 4: // Güvenlik başlıkları kontrolü
+                progressBar.style.width = '60%';
+                scanStatus.textContent = 'Devam ediyor...';
+                scanStep.textContent = 'HTTP güvenlik başlıkları kontrol ediliyor';
+                break;
+            case 5: // Zafiyet tarama
+                progressBar.style.width = '80%';
+                scanStatus.textContent = 'Devam ediyor...';
+                scanStep.textContent = 'Web uygulama zafiyetleri taranıyor';
+                break;
+            case 6: // Tamamlandı
+                progressBar.style.width = '100%';
+                progressBar.classList.remove('progress-bar-animated');
+                scanStatus.textContent = 'Tamamlandı';
+                scanStep.textContent = 'Tarama tamamlandı, sonuçlar hazırlanıyor...';
+                
+                // Tarama modalini gizle
+                setTimeout(() => {
+                    scanModal.classList.add('d-none');
+                    resultsSection.classList.remove('d-none');
+                    
+                    // Zafiyet tablosunu doldur
+                    fillVulnerabilitiesTable();
+                    
+                    // Raporlama butonunu aktif et
+                    const reportBtn = document.getElementById('generateReportBtn');
+                    if (reportBtn) {
+                        reportBtn.classList.remove('disabled');
+                    }
+                    
+                    // Başarılı tarama mesajı göster
+                    showToast('Başarılı', 'Siber güvenlik taraması tamamlandı. Sonuçlar aşağıda listelenmektedir.', 'success');
+                }, 1000);
+                break;
+        }
+    } else {
+        // Hata durumu
+        progressBar.style.width = '100%';
+        progressBar.classList.remove('progress-bar-animated', 'bg-primary');
+        progressBar.classList.add('bg-danger');
+        scanStatus.textContent = 'Hata';
+        scanStep.textContent = 'Tarama sırasında bir hata oluştu. Lütfen tekrar deneyin.';
+        
+        // Hata toast mesajı göster
+        showToast('Hata', 'Tarama sırasında bir hata oluştu. Lütfen tekrar deneyin.', 'danger');
     }
 }
 
-// Tarama durumunu güncelleyen fonksiyon
-function updateScanStatus(message, percentage) {
-    if (currentScan) {
-        currentScan.textContent = message;
+// Zafiyet tablosunu doldur
+function fillVulnerabilitiesTable() {
+    const tbody = document.querySelector('#vulnerabilitiesTable tbody');
+    if (!tbody) return;
+    
+    // Tabloyu temizle
+    tbody.innerHTML = '';
+    
+    // Örnek zafiyet verileri
+    const vulnerabilities = [
+        {
+            id: 1,
+            name: 'SSL/TLS Zayıf Şifreleme',
+            severity: 'Yüksek',
+            description: 'Sunucu, eskimiş ve güvenli olmayan SSL/TLS şifreleme algoritmalarını destekliyor.',
+            remediation: 'Sunucu yapılandırmasını güncelleyin ve yalnızca güçlü şifreleme algoritmalarını (TLS 1.2+) etkinleştirin.'
+        },
+        {
+            id: 2,
+            name: 'X-Frame-Options Header Eksik',
+            severity: 'Orta',
+            description: 'X-Frame-Options HTTP başlığı eksik, bu durum clickjacking saldırılarına karşı savunmasızlığa neden olabilir.',
+            remediation: 'X-Frame-Options: DENY veya X-Frame-Options: SAMEORIGIN header\'ını ekleyin.'
+        },
+        {
+            id: 3,
+            name: 'HTTP Strict Transport Security (HSTS) Eksik',
+            severity: 'Orta',
+            description: 'HSTS politikası yapılandırılmamış, bu durum HTTPS downgrade saldırılarına karşı savunmasızlığa neden olabilir.',
+            remediation: 'Strict-Transport-Security header\'ını ekleyin ve uygun maksimum yaş değerini ayarlayın.'
+        },
+        {
+            id: 4,
+            name: 'Admin Panel Tespit Edildi',
+            severity: 'Düşük',
+            description: 'Standart admin panel yolu (/admin) tespit edildi. Bu, potansiyel saldırganlar için hedef olabilir.',
+            remediation: 'Admin panel yolunu değiştirin ve IP bazlı erişim kısıtlamaları uygulayın.'
+        },
+        {
+            id: 5,
+            name: 'Server Header Bilgisi Sızıntısı',
+            severity: 'Düşük',
+            description: 'Server HTTP başlığı, sunucu yazılımı ve sürüm bilgilerini açığa çıkarıyor.',
+            remediation: 'Server HTTP başlığını kaldırın veya değiştirin, özel bir değerle değiştirin.'
+        }
+    ];
+    
+    // Risk seviyesi renklerini tanımla
+    const severityColors = {
+        'Kritik': 'danger',
+        'Yüksek': 'danger',
+        'Orta': 'warning',
+        'Düşük': 'info',
+        'Bilgi': 'primary'
+    };
+    
+    // Her bir zafiyet için tablo satırı oluştur
+    vulnerabilities.forEach(vuln => {
+        const tr = document.createElement('tr');
+        
+        const severityColor = severityColors[vuln.severity] || 'secondary';
+        
+        tr.innerHTML = `
+            <td>${vuln.id}</td>
+            <td>${vuln.name}</td>
+            <td><span class="badge bg-${severityColor}">${vuln.severity}</span></td>
+            <td>
+                <button class="btn btn-sm btn-info" type="button" data-bs-toggle="collapse" 
+                    data-bs-target="#vulnDetails${vuln.id}" aria-expanded="false">
+                    Detaylar
+                </button>
+            </td>
+        `;
+        
+        tbody.appendChild(tr);
+        
+        // Detay satırı
+        const detailRow = document.createElement('tr');
+        detailRow.className = 'collapse-row';
+        
+        detailRow.innerHTML = `
+            <td colspan="4" class="p-0">
+                <div class="collapse" id="vulnDetails${vuln.id}">
+                    <div class="card card-body">
+                        <h5>Açıklama</h5>
+                        <p>${vuln.description}</p>
+                        <h5>Çözüm Önerisi</h5>
+                        <p>${vuln.remediation}</p>
+                    </div>
+                </div>
+            </td>
+        `;
+        
+        tbody.appendChild(detailRow);
+    });
+    
+    // Sonuç sayısını güncelle
+    const vulnCount = document.getElementById('vulnCount');
+    if (vulnCount) {
+        vulnCount.textContent = vulnerabilities.length;
     }
     
-    if (scanProgress) {
-        scanProgress.style.width = `${percentage}%`;
-        scanProgress.setAttribute('aria-valuenow', percentage);
+    // Risk dağılımı çubuğunu güncelle
+    updateRiskDistribution(vulnerabilities);
+}
+
+// Risk dağılımı çubuğunu güncelle
+function updateRiskDistribution(vulnerabilities) {
+    // Risk seviyelerine göre sayıları hesapla
+    const counts = {
+        'Kritik': 0,
+        'Yüksek': 0,
+        'Orta': 0,
+        'Düşük': 0,
+        'Bilgi': 0
+    };
+    
+    vulnerabilities.forEach(vuln => {
+        if (counts[vuln.severity] !== undefined) {
+            counts[vuln.severity]++;
+        }
+    });
+    
+    // Progress barları güncelle
+    const criticalBar = document.getElementById('criticalRiskBar');
+    const highBar = document.getElementById('highRiskBar');
+    const mediumBar = document.getElementById('mediumRiskBar');
+    const lowBar = document.getElementById('lowRiskBar');
+    const infoBar = document.getElementById('infoRiskBar');
+    
+    if (criticalBar) criticalBar.style.width = `${(counts['Kritik'] / vulnerabilities.length) * 100}%`;
+    if (highBar) highBar.style.width = `${(counts['Yüksek'] / vulnerabilities.length) * 100}%`;
+    if (mediumBar) mediumBar.style.width = `${(counts['Orta'] / vulnerabilities.length) * 100}%`;
+    if (lowBar) lowBar.style.width = `${(counts['Düşük'] / vulnerabilities.length) * 100}%`;
+    if (infoBar) infoBar.style.width = `${(counts['Bilgi'] / vulnerabilities.length) * 100}%`;
+    
+    // Sayıları güncelle
+    document.querySelectorAll('[data-risk-count]').forEach(element => {
+        const riskLevel = element.getAttribute('data-risk-count');
+        if (counts[riskLevel] !== undefined) {
+            element.textContent = counts[riskLevel];
+        }
+    });
+}
+
+// PDF raporu oluştur
+function generatePDFReport() {
+    showToast('Bilgi', 'PDF raporu hazırlanıyor...', 'primary');
+    
+    // PDF rapor oluşturma kodları buraya gelecek
+    // Gerçek bir uygulamada, sunucudan rapor alınabilir veya jsPDF gibi bir kütüphane kullanılabilir
+    
+    setTimeout(() => {
+        showToast('Başarılı', 'PDF raporu başarıyla oluşturuldu. İndirme başlayacak.', 'success');
+        
+        // Gerçek bir dosya indirme mantığı buraya gelecek
+        // Bu örnek için sadece simülasyon yapıyoruz
+    }, 2000);
+}
+
+// Spesifik tarama türü için tarama gerçekleştir
+async function scanFunction(url, scanType) {
+    // Gerçek uygulamada burada API istekleri olacak
+    // Şimdilik demo için simüle ediyoruz
+    
+    // SSL/TLS Güvenlik Testi
+    if (scanType === 'ssl') {
+        await sleep(Math.random() * 1000 + 1500); // SSL kontrolü simülasyonu
+        
+        // Daha gerçekçi test verileri üretelim
+        const usesHTTPS = url.startsWith('https://');
+        const hasValidCert = usesHTTPS && Math.random() > 0.2;
+        const vulnerabilities = [];
+        
+        if (!usesHTTPS) {
+            vulnerabilities.push({
+                name: 'HTTPS Kullanılmıyor',
+                description: 'Web sitesi, şifrelenmiş bağlantı (HTTPS) kullanmıyor.',
+                severity: 'Yüksek',
+                recommendation: 'Web sitenizi HTTPS protokolünü kullanacak şekilde yapılandırın ve SSL sertifikası edinin.'
+            });
+        } else if (!hasValidCert) {
+            vulnerabilities.push({
+                name: 'Geçersiz SSL Sertifikası',
+                description: 'SSL sertifikası geçerli değil veya süresi dolmuş.',
+                severity: 'Yüksek',
+                recommendation: 'Geçerli bir SSL sertifikası edinin ve düzenli olarak yenileyin.'
+            });
+        }
+        
+        // TLS versiyonu kontrolü
+        if (Math.random() > 0.7) {
+            vulnerabilities.push({
+                name: 'Zayıf SSL/TLS Protokol Desteği',
+                description: 'Sunucu, güvenli olmayan TLS 1.0/1.1 protokollerini destekliyor.',
+                severity: 'Orta',
+                recommendation: 'Sunucunuzu TLS 1.2 ve üzeri protokollerini kullanacak şekilde yapılandırın ve eski protokolleri devre dışı bırakın.'
+            });
+        }
+        
+        // Zayıf şifreleme algoritmaları
+        if (Math.random() > 0.6) {
+            vulnerabilities.push({
+                name: 'Zayıf Şifreleme Algoritmaları',
+                description: 'Sunucu, DES, RC4 gibi güvenli olmayan şifreleme algoritmalarını destekliyor.',
+                severity: 'Kritik',
+                recommendation: 'Güvenli şifreleme algoritmaları (AES-256, ChaCha20) kullanacak şekilde yapılandırın.'
+            });
+        }
+        
+        // Heartbleed açığı
+        if (Math.random() > 0.9) {
+            vulnerabilities.push({
+                name: 'Heartbleed (CVE-2014-0160) Açığı',
+                description: 'OpenSSL Heartbleed açığı tespit edildi. Bu açık, bellek sızıntısına yol açabilir.',
+                severity: 'Kritik',
+                recommendation: 'OpenSSL yazılımını en son sürüme güncelleyin ve tüm SSL sertifikalarını yenileyin.'
+            });
+        }
+        
+        return {
+            usesHTTPS,
+            hasValidCert,
+            vulnerabilities,
+            tlsVersion: usesHTTPS ? (Math.random() > 0.7 ? 'TLSv1.0/1.1' : 'TLSv1.2/1.3') : 'N/A'
+        };
     }
+    
+    // Port Tarama
+    else if (scanType === 'port') {
+        await sleep(Math.random() * 2000 + 2000); // Port taraması simülasyonu
+        
+        const commonPorts = [
+            { number: 21, service: 'FTP', danger: Math.floor(Math.random() * 5) + 1 },
+            { number: 22, service: 'SSH', danger: Math.floor(Math.random() * 3) + 1 },
+            { number: 23, service: 'Telnet', danger: Math.floor(Math.random() * 2) + 4 },
+            { number: 25, service: 'SMTP', danger: Math.floor(Math.random() * 3) + 2 },
+            { number: 53, service: 'DNS', danger: Math.floor(Math.random() * 3) + 1 },
+            { number: 80, service: 'HTTP', danger: Math.floor(Math.random() * 3) + 2 },
+            { number: 443, service: 'HTTPS', danger: Math.floor(Math.random() * 2) + 1 },
+            { number: 445, service: 'SMB', danger: Math.floor(Math.random() * 2) + 3 },
+            { number: 3306, service: 'MySQL', danger: Math.floor(Math.random() * 3) + 2 },
+            { number: 3389, service: 'RDP', danger: Math.floor(Math.random() * 2) + 3 },
+            { number: 8080, service: 'HTTP-Proxy', danger: Math.floor(Math.random() * 3) + 2 }
+        ];
+        
+        // Rastgele 3-7 portu açık olarak seç
+        const openPortCount = Math.floor(Math.random() * 5) + 3;
+        const shuffled = commonPorts.sort(() => 0.5 - Math.random());
+        const openPorts = shuffled.slice(0, openPortCount);
+        
+        const vulnerabilities = [];
+        
+        // Tehlikeli portlar için zafiyet ekle
+        openPorts.forEach(port => {
+            if (port.danger >= 4) { // Yüksek tehlikeli portlar
+                let severity = port.danger === 5 ? 'Kritik' : 'Yüksek';
+                let portDesc = '';
+                
+                switch(port.service) {
+                    case 'Telnet':
+                        portDesc = 'Telnet şifresiz bağlantı sağlar ve tüm veri düz metin olarak iletilir.';
+                        break;
+                    case 'FTP':
+                        portDesc = 'FTP protokolü, kimlik bilgilerini şifrelenmemiş şekilde iletebilir.';
+                        break;
+                    case 'SMB':
+                        portDesc = 'SMB protokolü uzaktan kod çalıştırma açıkları taşıyabilir (ör. EternalBlue).';
+                        break;
+                    case 'RDP':
+                        portDesc = 'RDP protokolü brute force saldırılarına ve uzaktan kod çalıştırma açıklarına karşı savunmasız olabilir.';
+                        break;
+                    default:
+                        portDesc = `${port.service} portu açık ve potansiyel güvenlik riski taşıyor.`;
+                }
+                
+                vulnerabilities.push({
+                    name: `Açık ${port.service} Portu (${port.number})`,
+                    description: portDesc,
+                    severity: severity,
+                    recommendation: `${port.number} portunu kapatın veya sadece güvenilir IP adreslerine erişim izni verin.`
+                });
+            }
+        });
+        
+        return {
+            openPorts,
+            vulnerabilities,
+            scannedPortCount: 1000 // İlk 1000 port
+        };
+    }
+    
+    // HTTP Güvenlik Header'ları
+    else if (scanType === 'http_headers') {
+        await sleep(Math.random() * 1500 + 1000); // HTTP header kontrolü
+        
+        const headers = {
+            'X-Frame-Options': Math.random() > 0.4,
+            'Content-Security-Policy': Math.random() > 0.6,
+            'X-XSS-Protection': Math.random() > 0.5,
+            'X-Content-Type-Options': Math.random() > 0.4,
+            'Strict-Transport-Security': Math.random() > 0.7,
+            'Public-Key-Pins': Math.random() > 0.8,
+            'Referrer-Policy': Math.random() > 0.5
+        };
+        
+        const vulnerabilities = [];
+        
+        // Eksik header'lar için zafiyet ekle
+        if (!headers['X-Frame-Options']) {
+            vulnerabilities.push({
+                name: 'X-Frame-Options Header Eksik',
+                description: 'X-Frame-Options header eksikliği clickjacking saldırılarına olanak sağlar.',
+                severity: 'Orta',
+                recommendation: 'X-Frame-Options: DENY veya SAMEORIGIN header ekleyin.'
+            });
+        }
+        
+        if (!headers['Content-Security-Policy']) {
+            vulnerabilities.push({
+                name: 'Content-Security-Policy Header Eksik',
+                description: 'CSP eksikliği XSS saldırılarının etki alanını genişletir.',
+                severity: 'Yüksek',
+                recommendation: 'Güvenli bir Content-Security-Policy header tanımlayın.'
+            });
+        }
+        
+        if (!headers['X-XSS-Protection']) {
+            vulnerabilities.push({
+                name: 'X-XSS-Protection Header Eksik',
+                description: 'XSS koruması için tarayıcı mekanizmaları etkinleştirilmemiş.',
+                severity: 'Orta',
+                recommendation: 'X-XSS-Protection: 1; mode=block header ekleyin.'
+            });
+        }
+        
+        if (!headers['Strict-Transport-Security']) {
+            vulnerabilities.push({
+                name: 'HSTS Header Eksik',
+                description: 'HSTS eksikliği SSL stripping saldırılarına olanak sağlar.',
+                severity: 'Yüksek',
+                recommendation: 'Strict-Transport-Security header ekleyin ve max-age değerini en az 1 yıl olarak ayarlayın.'
+            });
+        }
+        
+        return {
+            headers,
+            vulnerabilities
+        };
+    }
+    
+    // Geri kalan tarama türleri için benzer işlevleri ekleyin
+    // ... existing code ...
+    
+    // Analiz
+    else if (scanType === 'analyzing') {
+        await sleep(Math.random() * 1000 + 2000);
+        return {
+            analyzed: true
+        };
+    }
+    
+    return {}; // Varsayılan sonuç
+}
+
+// Taramayı bitir ve sonuçları göster
+function finishScan() {
+    isScanning = false;
+    
+    // İlerleme çubuğunu 100% yap
+    updateScanStatus('Tarama tamamlandı!', 100);
+    
+    // Sonuçları göster
+    setTimeout(() => {
+        // Yükleme göstergesini gizle
+        loadingIndicator.style.display = 'none';
+        
+        // Sonuç sayfasını hazırla
+        fillVulnerabilitiesTable();
+        
+        // Sonuçlar bölümünü göster
+        const resultsSection = document.getElementById('resultsSection');
+        if (resultsSection) {
+            resultsSection.style.display = 'block';
+            resultsSection.scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        // Sonuç indirme butonunu göster
+        resultDownload.style.display = 'block';
+        
+        // Başarı mesajı göster
+        showToast('Başarılı', 'Tarama tamamlandı! Sonuçlar hazırlandı.', 'success');
+    }, 1000);
+}
+
+// Form gönderim işlemi
+function handleScanSubmit(e) {
+    e.preventDefault();
+    
+    // Form validasyonu
+    if (!validateForm()) {
+        return false;
+    }
+    
+    // URL'i al
+    const url = urlInput.value.trim();
+    
+    // Seçilen testleri al
+    const selectedTests = [];
+    document.querySelectorAll('input[name="scan_options"]:checked').forEach(checkbox => {
+        selectedTests.push(checkbox.id);
+    });
+    
+    // Hiç test seçilmemişse uyarı ver
+    if (selectedTests.length === 0) {
+        showToast('Uyarı', 'En az bir tarama seçeneği seçmelisiniz', 'warning');
+        return false;
+    }
+    
+    // Taramayı başlat
+    startScan(url, selectedTests);
+    
+    return false;
+}
+
+// Formun doğrulamasını yap
+function validateForm() {
+    // URL'i kontrol et
+    const url = urlInput.value.trim();
+    
+    if (!url) {
+        showToast('Hata', 'URL alanı boş bırakılamaz', 'danger');
+        urlInput.focus();
+        return false;
+    }
+    
+    if (!isValidUrl(url)) {
+        showToast('Hata', 'Geçerli bir URL adresi girin (https://ornek.com)', 'danger');
+        urlInput.focus();
+        return false;
+    }
+    
+    return true;
+}
+
+// URL geçerliliği kontrolü
+function isValidUrl(string) {
+    try {
+        new URL(string);
+        return true;
+    } catch (err) {
+        return false;
+    }
+}
+
+// Taramayı başlat
+function startScan(url, selectedTests) {
+    // Tarama sonuçları bölümünü gizle (önceki sonuçlar varsa)
+    if (resultsSection) {
+        resultsSection.classList.add('d-none');
+    }
+    
+    // Tarama başlatma bilgisi
+    showToast('Bilgi', 'Tarama başlatılıyor...', 'primary');
+    
+    // Simüle edilmiş tarama işlemini başlat
+    simulateScanProcess(url, selectedTests);
+}
+
+// Tüm checkboxları seç
+function selectAllCheckboxes() {
+    document.querySelectorAll('input[name="scan_options"]').forEach(checkbox => {
+        checkbox.checked = true;
+    });
+}
+
+// Tüm checkbox seçimlerini kaldır
+function deselectAllCheckboxes() {
+    document.querySelectorAll('input[name="scan_options"]').forEach(checkbox => {
+        checkbox.checked = false;
+    });
+}
+
+// İlerleme çubuğunu güncelle
+function updateProgressBar(value) {
+    const percent = Math.round(value);
+    scanProgress.style.width = `${percent}%`;
+    scanProgress.setAttribute('aria-valuenow', percent);
+    scanProgress.textContent = `${percent}%`;
+}
+
+// Tarama durumunu güncelle ve loglama yap
+function updateScanStatus(testName, status, type) {
+    // Status log container
+    const scanLog = document.getElementById('scanLog');
+    if (!scanLog) return;
+    
+    // Log class türünü belirle
+    const logClass = {
+        'info': 'text-info',
+        'success': 'text-success',
+        'warning': 'text-warning',
+        'error': 'text-danger'
+    }[type] || 'text-muted';
+    
+    // Timestamp
+    const now = new Date();
+    const timestamp = now.toLocaleTimeString('tr-TR');
+    
+    // Log mesajı oluştur
+    const logItem = document.createElement('div');
+    logItem.classList.add('scan-log-item', 'mb-2');
+    logItem.innerHTML = `
+        <span class="text-muted">[${timestamp}]</span>
+        <span class="${logClass}"><i class="bi bi-arrow-right-circle me-1"></i>${testName} ${status}</span>
+    `;
+    
+    // Loga ekle
+    scanLog.appendChild(logItem);
+    
+    // Otomatik scroll
+    scanLog.scrollTop = scanLog.scrollHeight;
+}
+
+// Taramayı tamamla
+function completeScan() {
+    // İlerleme çubuğunu %100 yap
+    updateProgressBar(100);
+    
+    // UI güncelle
+    loadingIndicator.classList.add('d-none');
+    isScanning = false;
+    
+    // Tamamlandı mesajı göster
+    updateScanStatus('Tüm tarama testleri', 'tamamlandı', 'success');
+    showToast('Başarılı', 'Güvenlik taraması başarıyla tamamlandı!', 'success');
+    
+    // Sonuçları göster
+    setTimeout(() => {
+        // Zafiyet tablosunu doldur
+        fillVulnerabilitiesTable();
+        
+        // Sonuçlar bölümünü göster
+        resultsSection.classList.remove('d-none');
+        
+        // Sayfayı sonuçlara kaydır
+        resultsSection.scrollIntoView({ behavior: 'smooth' });
+    }, 1000);
 }
 
 // Sleep fonksiyonu - asenkron bekleme
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-// Sonuçları gösterme fonksiyonu
-function displayScanResults(result) {
-    if (resultsSection) {
-        resultsSection.style.display = 'block';
-        
-        // Sonuçları DOM'a yerleştir
-        const vulnerabilityCountElement = document.getElementById('vulnerabilityCount');
-        const securityScoreElement = document.getElementById('securityScore');
-        const recommendationsList = document.getElementById('recommendationsList');
-        
-        if (vulnerabilityCountElement) {
-            vulnerabilityCountElement.textContent = result.results?.vulnerabilitiesFound || 0;
-        }
-        
-        if (securityScoreElement) {
-            securityScoreElement.textContent = result.results?.securityScore || 0;
-        }
-        
-        if (recommendationsList) {
-            recommendationsList.innerHTML = '';
-            if (result.results?.recommendations) {
-                result.results.recommendations.forEach(recommendation => {
-                    const li = document.createElement('li');
-                    li.textContent = recommendation;
-                    recommendationsList.appendChild(li);
-                });
-            }
-        }
-        
-        // İndirme linkini etkinleştir
-        if (downloadBtn && result.report_url) {
-            downloadBtn.href = result.report_url;
-            downloadBtn.style.display = 'inline-block';
-        }
-        
-        // Sayfayı sonuçlar bölümüne kaydır
-        resultsSection.scrollIntoView({ behavior: 'smooth' });
-    }
-}
-
-// Risk seviyesine göre badge sınıfı dön
-function getBadgeClass(risk) {
-    switch(risk) {
-        case 'Düşük': return 'bg-info';
-        case 'Orta': return 'bg-warning text-dark';
-        case 'Yüksek': return 'bg-danger';
-        case 'Kritik': return 'bg-dark';
-        default: return 'bg-secondary';
-    }
-}
-
-// Sayfa tamamen yüklendiğinde body'e loaded class'ı ekle
-window.addEventListener('load', () => {
-    document.body.classList.add('loaded');
-});
-
-// PDF rapor oluştur
-function generatePDF(data) {
-    // PDF oluşturmak için jsPDF kütüphanesini kullanıyoruz
-    // Not: Bu çalışması için HTML'de jsPDF kütüphanesinin dahil edilmesi gerekiyor
-    try {
-        const { jsPDF } = window.jspdf;
-        
-        // Yeni bir PDF dokümanı oluştur
-        const doc = new jsPDF();
-        
-        // Başlık ve logo
-        doc.setFontSize(22);
-        doc.setTextColor(33, 37, 41);
-        doc.text('CyberControl Güvenlik Raporu', 105, 20, { align: 'center' });
-        
-        // Alt başlık
-        doc.setFontSize(12);
-        doc.setTextColor(108, 117, 125);
-        doc.text(`Tarama Tarihi: ${new Date(data.scannedAt).toLocaleString('tr-TR')}`, 105, 30, { align: 'center' });
-        
-        // Hedef bilgileri
-        doc.setFontSize(14);
-        doc.setTextColor(33, 37, 41);
-        doc.text('Hedef Bilgileri', 20, 45);
-        
-        doc.setFontSize(11);
-        doc.text(`Taranan URL: ${data.url}`, 20, 55);
-        doc.text(`Seçilen Tarama Seçenekleri: ${data.options.join(', ')}`, 20, 62);
-        
-        // Tarama sonuçları
-        doc.setFontSize(14);
-        doc.setTextColor(33, 37, 41);
-        doc.text('Güvenlik Durumu', 20, 80);
-        
-        // Güvenlik puanı
-        doc.setFontSize(11);
-        doc.text(`Güvenlik Puanı: ${data.results.securityScore}/100`, 20, 90);
-        
-        // Bulunan zafiyetler
-        doc.text(`Bulunan Zafiyet Sayısı: ${data.results.vulnerabilitiesFound}`, 20, 97);
-        
-        // Tavsiyeler başlığı
-        doc.setFontSize(14);
-        doc.setTextColor(33, 37, 41);
-        doc.text('Öneriler', 20, 115);
-        
-        // Öneriler listesi
-        doc.setFontSize(11);
-        data.results.recommendations.forEach((rec, index) => {
-            doc.text(`${index + 1}. ${rec}`, 20, 125 + (index * 7));
-        });
-        
-        // Sayfa altı bilgisi
-        doc.setFontSize(9);
-        doc.setTextColor(108, 117, 125);
-        doc.text('Bu rapor CyberControl tarafından oluşturulmuştur.', 105, 280, { align: 'center' });
-        
-        // PDF'i indir
-        doc.save(`CyberControl_Rapor_${new Date().toISOString().slice(0, 10)}.pdf`);
-        
-        // Başarı bildirimi göster
-        showToast('Başarılı', 'PDF rapor başarıyla indirildi!', 'success');
-    } catch (error) {
-        console.error('PDF oluşturma hatası:', error);
-        showToast('Hata', 'PDF rapor oluşturulurken bir hata oluştu.', 'danger');
-    }
-}
-
-// PDF rapor oluşturma fonksiyonu
-function generatePdfReport(result) {
-    // Bu fonksiyonun içeriği, PDF raporunun gerçek oluşturulması için gerekli olan kodları içermelidir.
-    // Bu örnekte, PDF raporunun gerçek oluşturulması için jsPDF kullanılmıştır.
-    // Gerçek uygulamada, bu fonksiyonun içeriği, PDF raporunun gerçek oluşturulması için gerekli olan kodları içermelidir.
-    generatePDF(result);
-}
-
-// Event Listeners
-document.addEventListener('DOMContentLoaded', function() {
-    // Form gönderme olayını dinle
-    if (scanForm) {
-        scanForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            if (!validateForm()) {
-                return false;
-            }
-            
-            const url = urlInput.value.trim();
-            const selectedOptions = Array.from(document.querySelectorAll('input[name="scan_options"]:checked')).map(opt => opt.value);
-            
-            // Tarama sürecini başlat
-            try {
-                const result = await runScanProcess(url, selectedOptions);
-                displayScanResults(result);
-            } catch (error) {
-                console.error('Tarama hatası:', error);
-                showToast('Hata', 'Tarama sırasında bir hata oluştu: ' + error.message, 'danger');
-            }
-        });
-    }
-    
-    // Tüm seçenekleri seç butonu
-    if (selectAllBtn) {
-        selectAllBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            document.querySelectorAll('input[name="scan_options"]').forEach(checkbox => {
-                checkbox.checked = true;
-            });
-        });
-    }
-    
-    // Tüm seçimleri kaldır butonu
-    if (deselectAllBtn) {
-        deselectAllBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            document.querySelectorAll('input[name="scan_options"]').forEach(checkbox => {
-                checkbox.checked = false;
-            });
-        });
-    }
-    
-    // Hakkında butonu
-    if (aboutBtn && aboutModal) {
-        aboutBtn.addEventListener('click', function() {
-            const modal = new bootstrap.Modal(aboutModal);
-            modal.show();
-        });
-    }
-}); 
+} 

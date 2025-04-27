@@ -1,12 +1,8 @@
-import ssl
-import socket
-import requests
-import nmap
-from urllib.parse import urlparse
+import asyncio
 from datetime import datetime
 from .modules.ssl_tls_scanner import SSLTLSScanner
 from .modules.port_scanner import PortScanner
-from .modules.http_header_scanner import HTTPHeaderScanner
+from .modules.http_security_scanner import HTTPSecurityScanner
 from .modules.sql_injection_scanner import SQLInjectionScanner
 from .modules.xss_scanner import XSSScanner
 from .modules.server_info_scanner import ServerInfoScanner
@@ -17,58 +13,96 @@ from .modules.brute_force_scanner import BruteForceScanner
 
 class SecurityScanner:
     def __init__(self, target_url):
+        if not target_url.startswith(('http://', 'https://')):
+            target_url = 'https://' + target_url
+            
         self.target_url = target_url
-        self.parsed_url = urlparse(target_url)
-        self.hostname = self.parsed_url.netloc
-        self.scan_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        self.results = {}
+        self.results = []
+        self.scan_start_time = None
+        self.scan_end_time = None
         
-    def run_all_scans(self):
-        """Tüm güvenlik taramalarını çalıştırır ve sonuçları döndürür."""
-        self.results = {
-            "target_url": self.target_url,
-            "scan_date": self.scan_date,
-            "scan_results": {}
+    async def run_scan(self):
+        """Tüm güvenlik taramalarını asenkron olarak çalıştırır"""
+        self.scan_start_time = datetime.now()
+        
+        # Tarayıcı modüllerini başlat
+        scanners = [
+            SSLTLSScanner(self.target_url),
+            PortScanner(self.target_url),
+            HTTPSecurityScanner(self.target_url),
+            SQLInjectionScanner(self.target_url),
+            XSSScanner(self.target_url),
+            ServerInfoScanner(self.target_url),
+            AdminPanelScanner(self.target_url),
+            CMSScanner(self.target_url),
+            FileUploadScanner(self.target_url),
+            BruteForceScanner(self.target_url)
+        ]
+        
+        # Asenkron tarama görevlerini oluştur
+        tasks = []
+        for scanner in scanners:
+            if hasattr(scanner, 'async_scan'):
+                tasks.append(asyncio.create_task(scanner.async_scan()))
+            else:
+                # Senkron tarayıcıları ThreadPoolExecutor ile çalıştır
+                tasks.append(asyncio.create_task(self._run_sync_scanner(scanner)))
+        
+        # Tüm taramaları paralel çalıştır
+        scan_results = await asyncio.gather(*tasks, return_exceptions=True)
+        
+        # Sonuçları işle
+        for result in scan_results:
+            if isinstance(result, Exception):
+                self.results.append({
+                    "title": "Tarama Hatası",
+                    "findings": [{
+                        "name": "Beklenmeyen Hata",
+                        "description": str(result),
+                        "risk_level": "Hata",
+                        "impact": "Tarama tamamlanamadı",
+                        "recommendation": "Sistem yöneticinize başvurun"
+                    }]
+                })
+            else:
+                self.results.append(result)
+        
+        self.scan_end_time = datetime.now()
+        return self._generate_report()
+    
+    async def _run_sync_scanner(self, scanner):
+        """Senkron tarayıcıları asenkron çalıştırmak için yardımcı metod"""
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(None, scanner.scan)
+    
+    def _generate_report(self):
+        """Tarama sonuçlarından detaylı bir rapor oluşturur"""
+        total_findings = sum(len(result["findings"]) for result in self.results)
+        risk_levels = {
+            "Kritik": 0,
+            "Yüksek": 0,
+            "Orta": 0,
+            "Düşük": 0,
+            "Bilgi": 0,
+            "Hata": 0
         }
         
-        # SSL/TLS Taraması
-        ssl_scanner = SSLTLSScanner(self.target_url)
-        self.results["scan_results"]["ssl_tls"] = ssl_scanner.scan()
+        # Risk seviyelerini say
+        for result in self.results:
+            for finding in result["findings"]:
+                if finding["risk_level"] in risk_levels:
+                    risk_levels[finding["risk_level"]] += 1
         
-        # Port Taraması
-        port_scanner = PortScanner(self.hostname)
-        self.results["scan_results"]["ports"] = port_scanner.scan()
+        report = {
+            "summary": {
+                "target_url": self.target_url,
+                "scan_start_time": self.scan_start_time.strftime("%Y-%m-%d %H:%M:%S"),
+                "scan_end_time": self.scan_end_time.strftime("%Y-%m-%d %H:%M:%S"),
+                "duration": str(self.scan_end_time - self.scan_start_time),
+                "total_findings": total_findings,
+                "risk_summary": risk_levels
+            },
+            "detailed_results": self.results
+        }
         
-        # HTTP Başlık Taraması
-        header_scanner = HTTPHeaderScanner(self.target_url)
-        self.results["scan_results"]["http_headers"] = header_scanner.scan()
-        
-        # SQL Injection Taraması
-        sql_scanner = SQLInjectionScanner(self.target_url)
-        self.results["scan_results"]["sql_injection"] = sql_scanner.scan()
-        
-        # XSS Taraması
-        xss_scanner = XSSScanner(self.target_url)
-        self.results["scan_results"]["xss"] = xss_scanner.scan()
-        
-        # Sunucu Bilgi Sızıntısı Taraması
-        server_scanner = ServerInfoScanner(self.target_url)
-        self.results["scan_results"]["server_info"] = server_scanner.scan()
-        
-        # Admin Panel Taraması
-        admin_scanner = AdminPanelScanner(self.target_url)
-        self.results["scan_results"]["admin_panel"] = admin_scanner.scan()
-        
-        # CMS Taraması
-        cms_scanner = CMSScanner(self.target_url)
-        self.results["scan_results"]["cms"] = cms_scanner.scan()
-        
-        # Dosya Yükleme Zafiyeti Taraması
-        upload_scanner = FileUploadScanner(self.target_url)
-        self.results["scan_results"]["file_upload"] = upload_scanner.scan()
-        
-        # Brute Force Taraması
-        brute_scanner = BruteForceScanner(self.target_url)
-        self.results["scan_results"]["brute_force"] = brute_scanner.scan()
-        
-        return self.results 
+        return report 

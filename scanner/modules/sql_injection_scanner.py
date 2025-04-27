@@ -1,240 +1,231 @@
 import requests
-import time
-import urllib.parse
 from bs4 import BeautifulSoup
+from urllib.parse import urljoin, parse_qs, urlparse
+import time
 
 class SQLInjectionScanner:
     def __init__(self, target_url):
         self.target_url = target_url
         self.payloads = {
-            "error_based": [
-                "' OR 1=1 --",
-                "\" OR 1=1 --",
+            'error_based': [
                 "' OR '1'='1",
-                "\" OR \"1\"=\"1",
-                "') OR ('1'='1",
-                "\") OR (\"1\"=\"1",
-                "' OR '1'='1' --",
-                "\" OR \"1\"=\"1\" --",
-                "' OR 1=1#",
-                "\" OR 1=1#",
-                "' OR 1=1/*",
-                "\" OR 1=1/*",
-                "' UNION SELECT 1,2,3 --",
-                "\" UNION SELECT 1,2,3 --"
+                "' OR 1=1--",
+                "' OR 'x'='x",
+                "') OR ('x'='x",
+                "' UNION SELECT NULL--",
+                "' UNION SELECT NULL,NULL--",
+                "' UNION SELECT NULL,NULL,NULL--"
             ],
-            "time_based": [
-                "'; WAITFOR DELAY '0:0:5' --",
-                "\"; WAITFOR DELAY '0:0:5' --",
-                "' OR SLEEP(5) --",
-                "\" OR SLEEP(5) --",
-                "' AND SLEEP(5) --",
-                "\" AND SLEEP(5) --",
-                "'; SELECT SLEEP(5) --",
-                "\"; SELECT SLEEP(5) --"
+            'time_based': [
+                "' SLEEP(5)--",
+                "' WAITFOR DELAY '0:0:5'--",
+                "' BENCHMARK(50000000,MD5(1))--",
+                "') OR SLEEP(5)--",
+                "' OR pg_sleep(5)--"
+            ],
+            'boolean_based': [
+                "' AND 1=1--",
+                "' AND 1=2--",
+                "' OR 1=1--",
+                "' OR 1=2--",
+                "') AND ('1'='1",
+                "') AND ('1'='2"
             ]
         }
-        self.error_messages = [
-            "SQL syntax",
-            "mysql_fetch",
-            "mysqli_fetch",
-            "mysql_num_rows",
-            "mysql_query",
-            "pg_query",
-            "sqlite_query",
-            "ORA-",
-            "Microsoft SQL Native Client error",
-            "Microsoft OLE DB Provider for SQL Server error",
-            "Microsoft OLE DB Provider for ODBC Drivers error",
-            "Microsoft JET Database Engine error",
-            "ODBC Microsoft Access Driver",
-            "ODBC SQL Server Driver",
-            "SQLite3::",
-            "Warning: pg_",
-            "Warning: mysql_",
-            "Warning: mysqli_",
-            "PostgreSQL query failed"
-        ]
-    
+        
     def scan(self):
-        """SQL Injection zafiyeti taraması gerçekleştirir"""
+        """SQL injection zafiyetlerini test eder"""
         result = {
             "title": "SQL Injection Testi",
             "findings": []
         }
         
         try:
-            # URL parametrelerini analiz et
-            parsed_url = urllib.parse.urlparse(self.target_url)
-            query_params = urllib.parse.parse_qs(parsed_url.query)
-            
-            # URL parametreleri varsa SQL injection denemeleri yap
-            if query_params:
-                for param in query_params:
-                    # Error-based SQL Injection
-                    if self._test_error_based_sqli(param):
-                        result["findings"].append({
-                            "name": "Error-Based SQL Injection",
-                            "description": f"URL parametresi '{param}' için SQL Injection zafiyeti tespit edildi",
-                            "risk_level": "Kritik",
-                            "impact": "Veritabanına yetkisiz erişim, veri sızıntısı ve/veya düzenleme riski",
-                            "recommendation": "Tüm kullanıcı girdilerini doğrulayın ve parametreli sorgular kullanın"
-                        })
-                        break
-                        
-                    # Time-based SQL Injection
-                    if self._test_time_based_sqli(param):
-                        result["findings"].append({
-                            "name": "Time-Based SQL Injection",
-                            "description": f"URL parametresi '{param}' için Time-based SQL Injection zafiyeti tespit edildi",
-                            "risk_level": "Kritik",
-                            "impact": "Veritabanına yetkisiz erişim, veri sızıntısı ve/veya düzenleme riski",
-                            "recommendation": "Tüm kullanıcı girdilerini doğrulayın ve parametreli sorgular kullanın"
-                        })
-                        break
-            else:
-                # Form alanlarını bul ve test et
-                forms = self._find_forms()
-                if forms:
-                    for form in forms:
-                        for field in form['fields']:
-                            # Error-based SQL Injection (form)
-                            if self._test_form_error_based_sqli(form, field):
-                                result["findings"].append({
-                                    "name": "Form SQL Injection",
-                                    "description": f"Form alanı '{field}' için SQL Injection zafiyeti tespit edildi",
-                                    "risk_level": "Kritik",
-                                    "impact": "Veritabanına yetkisiz erişim, veri sızıntısı ve/veya düzenleme riski",
-                                    "recommendation": "Tüm kullanıcı girdilerini doğrulayın ve parametreli sorgular kullanın"
-                                })
-                                break
-        
-        except Exception as e:
-            result["findings"].append({
-                "name": "SQL Injection Tarama Hatası",
-                "description": f"SQL Injection testi sırasında hata oluştu: {str(e)}",
-                "risk_level": "Orta",
-                "impact": "SQL Injection taraması tamamlanamadı",
-                "recommendation": "Taramayı yeniden deneyin veya manuel olarak test edin"
-            })
-        
-        if not result["findings"]:
-            result["findings"].append({
-                "name": "SQL Injection",
-                "description": "SQL Injection zafiyeti tespit edilmedi",
-                "risk_level": "Düşük",
-                "impact": "Herhangi bir sorun tespit edilmedi",
-                "recommendation": "Güvenli kodlama pratiklerine devam edin ve düzenli olarak güvenlik taramaları yapın"
-            })
-            
-        return result
-    
-    def _test_error_based_sqli(self, param):
-        """URL parametresi için error-based SQL Injection testi yapar"""
-        parsed_url = urllib.parse.urlparse(self.target_url)
-        
-        for payload in self.payloads["error_based"]:
-            query_params = urllib.parse.parse_qs(parsed_url.query)
-            query_params[param] = [payload]
-            
-            # Yeni sorgu oluştur
-            new_query = urllib.parse.urlencode(query_params, doseq=True)
-            test_url = urllib.parse.urlunparse(parsed_url._replace(query=new_query))
-            
-            try:
-                response = requests.get(test_url, timeout=10, verify=False)
-                
-                # Hata mesajları için yanıtı kontrol et
-                for error in self.error_messages:
-                    if error in response.text:
-                        return True
-                        
-            except requests.exceptions.RequestException:
-                continue
-                
-        return False
-    
-    def _test_time_based_sqli(self, param):
-        """URL parametresi için time-based SQL Injection testi yapar"""
-        parsed_url = urllib.parse.urlparse(self.target_url)
-        
-        for payload in self.payloads["time_based"]:
-            query_params = urllib.parse.parse_qs(parsed_url.query)
-            query_params[param] = [payload]
-            
-            # Yeni sorgu oluştur
-            new_query = urllib.parse.urlencode(query_params, doseq=True)
-            test_url = urllib.parse.urlunparse(parsed_url._replace(query=new_query))
-            
-            try:
-                start_time = time.time()
-                response = requests.get(test_url, timeout=10, verify=False)
-                elapsed_time = time.time() - start_time
-                
-                # Gecikme durumunu kontrol et (eşik değeri 4 saniye)
-                if elapsed_time > 4:
-                    return True
-                    
-            except requests.exceptions.Timeout:
-                # Zaman aşımı da bir time-based SQLi göstergesi olabilir
-                return True
-            except requests.exceptions.RequestException:
-                continue
-                
-        return False
-    
-    def _find_forms(self):
-        """Hedef URL'deki formları bulur"""
-        forms = []
-        
-        try:
-            response = requests.get(self.target_url, timeout=10, verify=False)
+            # Ana sayfayı tara
+            response = requests.get(self.target_url, verify=False)
             soup = BeautifulSoup(response.text, 'html.parser')
             
+            # Form ve parametreleri topla
+            injection_points = []
+            
+            # URL parametrelerini kontrol et
+            parsed_url = urlparse(self.target_url)
+            if parsed_url.query:
+                params = parse_qs(parsed_url.query)
+                for param in params:
+                    injection_points.append({
+                        'type': 'get',
+                        'param': param,
+                        'url': self.target_url
+                    })
+            
+            # Formları kontrol et
             for form in soup.find_all('form'):
-                form_info = {
-                    'action': form.get('action', ''),
-                    'method': form.get('method', 'get').lower(),
-                    'fields': []
-                }
+                action = form.get('action', '')
+                method = form.get('method', 'get').lower()
+                form_url = urljoin(self.target_url, action) if action else self.target_url
                 
-                for input_field in form.find_all(['input', 'textarea']):
-                    field_name = input_field.get('name')
-                    if field_name:
-                        form_info['fields'].append(field_name)
-                        
-                if form_info['fields']:
-                    forms.append(form_info)
-                    
-        except requests.exceptions.RequestException:
-            pass
+                # Input alanlarını topla
+                for input_tag in form.find_all(['input', 'textarea']):
+                    if input_tag.get('type') not in ['submit', 'button', 'file']:
+                        injection_points.append({
+                            'type': method,
+                            'param': input_tag.get('name', ''),
+                            'url': form_url
+                        })
             
-        return forms
-    
-    def _test_form_error_based_sqli(self, form, field):
-        """Form alanı için error-based SQL Injection testi yapar"""
-        form_url = form['action']
-        if not form_url.startswith('http'):
-            # Göreceli URL ise mutlak URL oluştur
-            parsed_url = urllib.parse.urlparse(self.target_url)
-            base_url = urllib.parse.urlunparse((parsed_url.scheme, parsed_url.netloc, '', '', '', ''))
-            form_url = urllib.parse.urljoin(base_url, form_url)
+            if not injection_points:
+                result["findings"].append({
+                    "name": "Enjeksiyon Noktası Bulunamadı",
+                    "description": "Test edilebilecek form veya parametre bulunamadı",
+                    "risk_level": "Bilgi",
+                    "impact": "Yok",
+                    "recommendation": "Uygulama giriş noktalarını gözden geçirin"
+                })
+                return result
             
-        for payload in self.payloads["error_based"]:
-            form_data = {field: payload}
-            
-            try:
-                if form['method'] == 'post':
-                    response = requests.post(form_url, data=form_data, timeout=10, verify=False)
-                else:
-                    response = requests.get(form_url, params=form_data, timeout=10, verify=False)
-                    
-                # Hata mesajları için yanıtı kontrol et
-                for error in self.error_messages:
-                    if error in response.text:
-                        return True
-                        
-            except requests.exceptions.RequestException:
-                continue
+            # Her nokta için SQL injection testleri yap
+            for point in injection_points:
+                vulnerabilities = []
                 
-        return False 
+                # Error-based testler
+                for payload in self.payloads['error_based']:
+                    try:
+                        if point['type'] == 'get':
+                            params = {point['param']: payload}
+                            response = requests.get(point['url'], params=params, verify=False)
+                        else:
+                            data = {point['param']: payload}
+                            response = requests.post(point['url'], data=data, verify=False)
+                        
+                        # SQL hata mesajlarını kontrol et
+                        error_indicators = [
+                            'SQL syntax',
+                            'mysql_fetch',
+                            'ORA-',
+                            'PostgreSQL',
+                            'SQLite3',
+                            'SQLSTATE',
+                            'Microsoft SQL Server'
+                        ]
+                        
+                        if any(indicator in response.text for indicator in error_indicators):
+                            vulnerabilities.append({
+                                'type': 'Error-based SQL Injection',
+                                'payload': payload,
+                                'evidence': 'SQL hata mesajı tespit edildi'
+                            })
+                            break
+                            
+                    except:
+                        continue
+                
+                # Time-based testler
+                for payload in self.payloads['time_based']:
+                    try:
+                        start_time = time.time()
+                        
+                        if point['type'] == 'get':
+                            params = {point['param']: payload}
+                            response = requests.get(point['url'], params=params, verify=False, timeout=10)
+                        else:
+                            data = {point['param']: payload}
+                            response = requests.post(point['url'], data=data, verify=False, timeout=10)
+                            
+                        execution_time = time.time() - start_time
+                        
+                        if execution_time >= 5:
+                            vulnerabilities.append({
+                                'type': 'Time-based SQL Injection',
+                                'payload': payload,
+                                'evidence': f'Yanıt süresi: {execution_time:.2f} saniye'
+                            })
+                            break
+                            
+                    except requests.Timeout:
+                        vulnerabilities.append({
+                            'type': 'Time-based SQL Injection',
+                            'payload': payload,
+                            'evidence': 'İstek zaman aşımına uğradı'
+                        })
+                        break
+                    except:
+                        continue
+                
+                # Boolean-based testler
+                for i in range(0, len(self.payloads['boolean_based']), 2):
+                    try:
+                        true_payload = self.payloads['boolean_based'][i]
+                        false_payload = self.payloads['boolean_based'][i+1]
+                        
+                        # True payload testi
+                        if point['type'] == 'get':
+                            params = {point['param']: true_payload}
+                            true_response = requests.get(point['url'], params=params, verify=False)
+                        else:
+                            data = {point['param']: true_payload}
+                            true_response = requests.post(point['url'], data=data, verify=False)
+                        
+                        # False payload testi
+                        if point['type'] == 'get':
+                            params = {point['param']: false_payload}
+                            false_response = requests.get(point['url'], params=params, verify=False)
+                        else:
+                            data = {point['param']: false_payload}
+                            false_response = requests.post(point['url'], data=data, verify=False)
+                        
+                        # Yanıtları karşılaştır
+                        if true_response.text != false_response.text:
+                            vulnerabilities.append({
+                                'type': 'Boolean-based SQL Injection',
+                                'payload': true_payload,
+                                'evidence': 'True/False yanıtları farklı'
+                            })
+                            break
+                            
+                    except:
+                        continue
+                
+                # Zafiyet bulunduysa raporla
+                if vulnerabilities:
+                    for vuln in vulnerabilities:
+                        result["findings"].append({
+                            "name": f"SQL Injection Açığı: {vuln['type']}",
+                            "description": f"URL: {point['url']}\n" + \
+                                         f"Parametre: {point['param']}\n" + \
+                                         f"Metod: {point['type'].upper()}\n" + \
+                                         f"Payload: {vuln['payload']}\n" + \
+                                         f"Kanıt: {vuln['evidence']}",
+                            "risk_level": "Kritik",
+                            "impact": "Veritabanı manipülasyonu ve veri sızıntısı mümkün",
+                            "recommendation": "\n".join([
+                                "1. Prepared statements kullanın",
+                                "2. ORM kullanın",
+                                "3. Giriş verilerini doğrulayın ve temizleyin",
+                                "4. En az yetki prensibini uygulayın",
+                                "5. WAF kullanın",
+                                "6. Hata mesajlarını gizleyin",
+                                "7. Veritabanı kullanıcı yetkilerini sınırlayın"
+                            ])
+                        })
+            
+            # Eğer hiç bulgu yoksa
+            if not result["findings"]:
+                result["findings"].append({
+                    "name": "SQL Injection Açığı Bulunamadı",
+                    "description": "Test edilen noktalarda SQL injection açığı tespit edilmedi",
+                    "risk_level": "Bilgi",
+                    "impact": "Yok",
+                    "recommendation": "Düzenli güvenlik kontrollerine devam edin"
+                })
+                
+        except Exception as e:
+            result["findings"].append({
+                "name": "Tarama Hatası",
+                "description": f"SQL injection taraması sırasında hata: {str(e)}",
+                "risk_level": "Hata",
+                "impact": "SQL injection açıkları belirlenemedi",
+                "recommendation": "Sistem yöneticinize başvurun"
+            })
+            
+        return result 
