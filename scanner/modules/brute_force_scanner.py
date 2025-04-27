@@ -1,28 +1,199 @@
 import requests
-import urllib.parse
 from bs4 import BeautifulSoup
+from urllib.parse import urljoin
 import time
 import re
 
 class BruteForceScanner:
     def __init__(self, target_url):
         self.target_url = target_url
-        self.login_forms = []
-        self.test_credentials = [
-            {"username": "admin", "password": "admin"},
-            {"username": "admin", "password": "password"},
-            {"username": "admin", "password": "123456"},
-            {"username": "administrator", "password": "administrator"},
-            {"username": "root", "password": "root"},
-            {"username": "test", "password": "test"}
+        self.common_usernames = [
+            'admin',
+            'administrator',
+            'root',
+            'user',
+            'test',
+            'guest',
+            'demo',
+            'manager',
+            'webmaster',
+            'support'
         ]
-        self.login_keywords = [
-            'login', 'sign in', 'signin', 'log in', 'username', 'password', 
-            'user name', 'kullanıcı adı', 'şifre', 'giriş', 'oturum aç'
+        self.common_passwords = [
+            'admin',
+            'password',
+            '123456',
+            'admin123',
+            'pass123',
+            'password123',
+            'qwerty',
+            '12345678',
+            '111111',
+            'test123'
         ]
         
+    def find_login_forms(self):
+        """Login formlarını bulur"""
+        forms = []
+        try:
+            response = requests.get(self.target_url, verify=False)
+            soup = BeautifulSoup(response.text, 'html.parser')
+            
+            # Form elementlerini bul
+            for form in soup.find_all('form'):
+                action = form.get('action', '')
+                if not action:
+                    action = self.target_url
+                else:
+                    action = urljoin(self.target_url, action)
+                    
+                method = form.get('method', 'post').lower()
+                username_field = None
+                password_field = None
+                
+                # Input alanlarını kontrol et
+                for input_tag in form.find_all('input'):
+                    input_type = input_tag.get('type', '').lower()
+                    input_name = input_tag.get('name', '')
+                    input_id = input_tag.get('id', '')
+                    
+                    # Kullanıcı adı alanını bul
+                    if input_type == 'text' and any(keyword in input_name.lower() or keyword in input_id.lower() 
+                                                  for keyword in ['user', 'email', 'login', 'name']):
+                        username_field = input_name
+                        
+                    # Şifre alanını bul
+                    elif input_type == 'password':
+                        password_field = input_name
+                
+                if username_field and password_field:
+                    forms.append({
+                        'url': action,
+                        'method': method,
+                        'username_field': username_field,
+                        'password_field': password_field
+                    })
+                    
+            return forms
+            
+        except Exception as e:
+            return []
+            
+    def test_credentials(self, form, username, password):
+        """Kullanıcı adı ve şifre kombinasyonunu test eder"""
+        try:
+            data = {
+                form['username_field']: username,
+                form['password_field']: password
+            }
+            
+            # İsteği gönder
+            if form['method'] == 'post':
+                response = requests.post(form['url'], data=data, verify=False, allow_redirects=True)
+            else:
+                response = requests.get(form['url'], params=data, verify=False, allow_redirects=True)
+            
+            # Başarılı giriş belirtilerini kontrol et
+            content = response.text.lower()
+            
+            # Başarısız giriş belirtileri
+            failure_indicators = [
+                'invalid',
+                'incorrect',
+                'failed',
+                'error',
+                'wrong',
+                'try again',
+                'geçersiz',
+                'hatalı',
+                'başarısız',
+                'yanlış'
+            ]
+            
+            # Başarılı giriş belirtileri
+            success_indicators = [
+                'welcome',
+                'dashboard',
+                'profile',
+                'logout',
+                'account',
+                'hoşgeldin',
+                'panel',
+                'profil',
+                'çıkış',
+                'hesap'
+            ]
+            
+            # Başarısız giriş kontrolü
+            if any(indicator in content for indicator in failure_indicators):
+                return False
+                
+            # Başarılı giriş kontrolü
+            if any(indicator in content for indicator in success_indicators):
+                return True
+                
+            # URL değişikliği kontrolü
+            if response.url != form['url']:
+                return True
+                
+            return False
+            
+        except Exception as e:
+            return False
+            
+    def check_rate_limiting(self, form):
+        """Rate limiting kontrolü yapar"""
+        try:
+            # Hızlı ardışık istekler gönder
+            for i in range(5):
+                data = {
+                    form['username_field']: f'test{i}',
+                    form['password_field']: f'test{i}'
+                }
+                
+                if form['method'] == 'post':
+                    response = requests.post(form['url'], data=data, verify=False)
+                else:
+                    response = requests.get(form['url'], params=data, verify=False)
+                    
+                # Rate limit başlıklarını kontrol et
+                rate_limit_headers = [
+                    'x-ratelimit-limit',
+                    'x-ratelimit-remaining',
+                    'retry-after',
+                    'x-rate-limit-limit',
+                    'x-rate-limit-remaining'
+                ]
+                
+                if any(header in response.headers.keys() for header in rate_limit_headers):
+                    return True
+                    
+                # HTTP 429 (Too Many Requests) kontrolü
+                if response.status_code == 429:
+                    return True
+                    
+                time.sleep(0.1)
+                
+            return False
+            
+        except Exception as e:
+            return False
+            
+    def check_captcha(self, form_html):
+        """CAPTCHA kontrolü yapar"""
+        captcha_indicators = [
+            'captcha',
+            'recaptcha',
+            'g-recaptcha',
+            'h-captcha',
+            'doğrulama kodu',
+            'güvenlik kodu'
+        ]
+        
+        return any(indicator in form_html.lower() for indicator in captcha_indicators)
+        
     def scan(self):
-        """Brute Force saldırısı zafiyeti testi yapar"""
+        """Brute force saldırı testi yapar"""
         result = {
             "title": "Brute Force Saldırı Testi",
             "findings": []
@@ -30,387 +201,96 @@ class BruteForceScanner:
         
         try:
             # Login formlarını bul
-            self._find_login_forms()
+            forms = self.find_login_forms()
             
-            if not self.login_forms:
+            if not forms:
                 result["findings"].append({
-                    "name": "Login Formu",
-                    "description": "Herhangi bir login formu tespit edilmedi",
-                    "risk_level": "Düşük",
-                    "impact": "Herhangi bir sorun tespit edilmedi",
-                    "recommendation": "Uygulanabilir değil"
+                    "name": "Login Formu Bulunamadı",
+                    "description": "Test için uygun login formu bulunamadı",
+                    "risk_level": "Bilgi",
+                    "impact": "Test yapılamadı",
+                    "recommendation": "Login sayfasını kontrol edin"
                 })
                 return result
+            
+            # Her form için test yap
+            for form in forms:
+                form_html = requests.get(form['url'], verify=False).text
                 
-            # CAPTCHA kontrolü yap
-            captcha_forms = self._check_captcha()
-            
-            if captcha_forms:
-                captcha_urls = ", ".join([form['url'] for form in captcha_forms])
-                result["findings"].append({
-                    "name": "CAPTCHA Koruması",
-                    "description": f"Login formlarında CAPTCHA koruması tespit edildi: {captcha_urls}",
-                    "risk_level": "Düşük",
-                    "impact": "CAPTCHA koruması brute force saldırılarına karşı koruma sağlar",
-                    "recommendation": "CAPTCHA korumasını sürdürün ve güncel tutun"
-                })
-            
-            # Rate limiting kontrolü yap
-            rate_limited_forms = self._check_rate_limiting()
-            
-            if rate_limited_forms:
-                limited_urls = ", ".join([form['url'] for form in rate_limited_forms])
-                result["findings"].append({
-                    "name": "Rate Limiting Koruması",
-                    "description": f"Login formlarında istek sınırlaması (rate limiting) tespit edildi: {limited_urls}",
-                    "risk_level": "Düşük",
-                    "impact": "İstek sınırlaması brute force saldırılarını yavaşlatır",
-                    "recommendation": "Rate limiting korumasını sürdürün ve güçlendirin"
-                })
-            
-            # Güvenli olmayan formları bul
-            vulnerable_forms = []
-            
-            for form in self.login_forms:
-                # Bu form CAPTCHA veya rate limiting koruması var mı?
-                form_url = form['url']
-                is_protected = False
-                
-                for captcha_form in captcha_forms:
-                    if captcha_form['url'] == form_url:
-                        is_protected = True
-                        break
-                        
-                if not is_protected:
-                    for rate_limited_form in rate_limited_forms:
-                        if rate_limited_form['url'] == form_url:
-                            is_protected = True
-                            break
-                
-                if not is_protected:
-                    vulnerable_forms.append(form)
-            
-            # Güvenli olmayan formları raporla
-            if vulnerable_forms:
-                vuln_urls = ", ".join([form['url'] for form in vulnerable_forms])
-                result["findings"].append({
-                    "name": "Brute Force Zafiyeti",
-                    "description": f"Login formları brute force saldırılarına karşı korumasız: {vuln_urls}",
-                    "risk_level": "Yüksek",
-                    "impact": "Saldırganlar şifre tahmin saldırıları ile hesaplara erişebilir",
-                    "recommendation": "CAPTCHA, rate limiting, geçici hesap kilitleme gibi koruma mekanizmaları ekleyin"
-                })
-            else:
-                if self.login_forms and (captcha_forms or rate_limited_forms):
+                # CAPTCHA kontrolü
+                has_captcha = self.check_captcha(form_html)
+                if has_captcha:
                     result["findings"].append({
-                        "name": "Brute Force Koruması",
-                        "description": "Login formları brute force saldırılarına karşı korumalı görünüyor",
+                        "name": "CAPTCHA Koruması Tespit Edildi",
+                        "description": f"URL: {form['url']}\nCAPTCHA koruması aktif",
                         "risk_level": "Düşük",
-                        "impact": "Herhangi bir sorun tespit edilmedi",
-                        "recommendation": "Güvenlik önlemlerini sürdürün ve güncel tutun"
+                        "impact": "Brute force saldırıları CAPTCHA ile engellenebilir",
+                        "recommendation": "CAPTCHA korumasını aktif tutun"
                     })
+                    continue
                 
+                # Rate limiting kontrolü
+                has_rate_limit = self.check_rate_limiting(form)
+                if has_rate_limit:
+                    result["findings"].append({
+                        "name": "Rate Limiting Tespit Edildi",
+                        "description": f"URL: {form['url']}\nRate limiting koruması aktif",
+                        "risk_level": "Düşük",
+                        "impact": "Brute force saldırıları rate limiting ile yavaşlatılabilir",
+                        "recommendation": "Rate limiting korumasını aktif tutun"
+                    })
+                    continue
+                
+                # Brute force testi
+                successful_logins = []
+                max_attempts = 3  # Test için sınırlı sayıda deneme
+                
+                for username in self.common_usernames[:max_attempts]:
+                    for password in self.common_passwords[:max_attempts]:
+                        if self.test_credentials(form, username, password):
+                            successful_logins.append({
+                                'username': username,
+                                'password': password
+                            })
+                            
+                        time.sleep(0.5)  # Rate limiting'i tetiklememek için bekle
+                
+                # Sonuçları raporla
+                if successful_logins:
+                    result["findings"].append({
+                        "name": "Zayıf Kimlik Bilgileri Tespit Edildi",
+                        "description": f"URL: {form['url']}\n" + \
+                                     "Başarılı Girişler:\n" + \
+                                     "\n".join(f"- Kullanıcı: {login['username']}, Şifre: {login['password']}" 
+                                             for login in successful_logins),
+                        "risk_level": "Kritik",
+                        "impact": "Saldırganlar yaygın kullanıcı adı ve şifrelerle giriş yapabilir",
+                        "recommendation": "\n".join([
+                            "1. Güçlü parola politikası uygulayın",
+                            "2. CAPTCHA koruması ekleyin",
+                            "3. Rate limiting uygulayın",
+                            "4. Başarısız giriş denemelerini sınırlayın",
+                            "5. İki faktörlü kimlik doğrulama (2FA) ekleyin",
+                            "6. Başarısız girişleri loglayın ve alarm kurun",
+                            "7. IP tabanlı engelleme uygulayın"
+                        ])
+                    })
+                else:
+                    result["findings"].append({
+                        "name": "Brute Force Testi Başarısız",
+                        "description": f"URL: {form['url']}\nTest edilen yaygın kimlik bilgileriyle giriş yapılamadı",
+                        "risk_level": "Bilgi",
+                        "impact": "Yok",
+                        "recommendation": "Güvenlik önlemlerini sürdürün"
+                    })
+                    
         except Exception as e:
             result["findings"].append({
-                "name": "Brute Force Testi Hatası",
-                "description": f"Brute force testi sırasında hata oluştu: {str(e)}",
-                "risk_level": "Orta",
-                "impact": "Brute force saldırı testi tamamlanamadı",
-                "recommendation": "Login formlarını manuel olarak kontrol edin"
+                "name": "Tarama Hatası",
+                "description": f"Brute force taraması sırasında hata: {str(e)}",
+                "risk_level": "Hata",
+                "impact": "Brute force zafiyetleri belirlenemedi",
+                "recommendation": "Sistem yöneticinize başvurun"
             })
             
-        return result
-    
-    def _find_login_forms(self):
-        """Site içerisindeki login formlarını tespit eder"""
-        try:
-            response = requests.get(self.target_url, timeout=10, verify=False)
-            soup = BeautifulSoup(response.text, 'html.parser')
-            
-            # Tüm formları bul
-            forms = soup.find_all('form')
-            
-            for form in forms:
-                # Bu bir login formu mu?
-                if self._is_login_form(form):
-                    # Form bilgilerini topla
-                    action = form.get('action', '')
-                    method = form.get('method', 'post').lower()
-                    
-                    # Form action URL'sini oluştur
-                    if not action.startswith(('http://', 'https://')):
-                        # Göreceli URL'yi mutlak URL'ye çevir
-                        parsed_url = urllib.parse.urlparse(self.target_url)
-                        base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
-                        action = urllib.parse.urljoin(base_url, action)
-                    
-                    # Form alanlarını topla
-                    username_field = None
-                    password_field = None
-                    other_fields = []
-                    
-                    # Username ve password alanlarını bul
-                    for input_tag in form.find_all('input'):
-                        input_type = input_tag.get('type', '')
-                        input_name = input_tag.get('name')
-                        
-                        if input_name:
-                            input_value = input_tag.get('value', '')
-                            
-                            # Username alanı
-                            if (input_type == 'text' or input_type == 'email') and username_field is None:
-                                username_field = input_name
-                            # Password alanı
-                            elif input_type == 'password':
-                                password_field = input_name
-                            # Diğer alanlar
-                            elif input_type != 'submit' and input_type != 'button':
-                                other_fields.append({
-                                    'name': input_name,
-                                    'value': input_value
-                                })
-                    
-                    # En az bir username ve password alanı varsa
-                    if username_field and password_field:
-                        self.login_forms.append({
-                            'url': action,
-                            'method': method,
-                            'username_field': username_field,
-                            'password_field': password_field,
-                            'other_fields': other_fields
-                        })
-            
-            # Sayfa içinde login bağlantıları ara ve takip et
-            self._follow_login_links(soup)
-            
-        except requests.exceptions.RequestException:
-            pass
-            
-    def _follow_login_links(self, soup):
-        """Login sayfalarını bulmak için bağlantıları takip eder"""
-        
-        login_links = []
-        
-        # Login bağlantılarını ara
-        for link in soup.find_all('a', href=True):
-            href = link.get('href')
-            link_text = link.text.lower()
-            
-            # Login ile ilgili bir bağlantı mı?
-            is_login_link = False
-            for keyword in self.login_keywords:
-                if keyword in link_text or keyword in href.lower():
-                    is_login_link = True
-                    break
-                    
-            if is_login_link:
-                login_links.append(href)
-                
-        # Bulunan bağlantıları takip et
-        for href in login_links:
-            # Tam URL oluştur
-            if not href.startswith(('http://', 'https://')):
-                parsed_url = urllib.parse.urlparse(self.target_url)
-                base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
-                href = urllib.parse.urljoin(base_url, href)
-                
-            # Bu sayfayı ziyaret et
-            try:
-                login_page_response = requests.get(href, timeout=10, verify=False)
-                login_page_soup = BeautifulSoup(login_page_response.text, 'html.parser')
-                
-                # Login formlarını ara
-                forms = login_page_soup.find_all('form')
-                
-                for form in forms:
-                    if self._is_login_form(form):
-                        action = form.get('action', '')
-                        method = form.get('method', 'post').lower()
-                        
-                        # Form action URL'sini oluştur
-                        if not action.startswith(('http://', 'https://')):
-                            parsed_url = urllib.parse.urlparse(href)
-                            base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
-                            action = urllib.parse.urljoin(base_url, action)
-                        
-                        # Form alanlarını topla
-                        username_field = None
-                        password_field = None
-                        other_fields = []
-                        
-                        for input_tag in form.find_all('input'):
-                            input_type = input_tag.get('type', '')
-                            input_name = input_tag.get('name')
-                            
-                            if input_name:
-                                input_value = input_tag.get('value', '')
-                                
-                                if (input_type == 'text' or input_type == 'email') and username_field is None:
-                                    username_field = input_name
-                                elif input_type == 'password':
-                                    password_field = input_name
-                                elif input_type != 'submit' and input_type != 'button':
-                                    other_fields.append({
-                                        'name': input_name,
-                                        'value': input_value
-                                    })
-                        
-                        # Bu form zaten eklendi mi?
-                        form_exists = False
-                        for existing_form in self.login_forms:
-                            if existing_form['url'] == action:
-                                form_exists = True
-                                break
-                                
-                        # En az bir username ve password alanı varsa ve form daha önce eklenmemişse
-                        if username_field and password_field and not form_exists:
-                            self.login_forms.append({
-                                'url': action,
-                                'method': method,
-                                'username_field': username_field,
-                                'password_field': password_field,
-                                'other_fields': other_fields
-                            })
-                                
-            except requests.exceptions.RequestException:
-                continue
-                
-    def _is_login_form(self, form):
-        """Bir formun login formu olup olmadığını kontrol eder"""
-        
-        # Form içeriğini kontrol et
-        form_html = str(form).lower()
-        
-        # Password input kontrolü
-        password_input = form.find('input', {'type': 'password'})
-        if not password_input:
-            return False
-            
-        # Login anahtar kelimeleri var mı?
-        has_login_keyword = False
-        for keyword in self.login_keywords:
-            if keyword in form_html:
-                has_login_keyword = True
-                break
-                
-        return has_login_keyword
-        
-    def _check_captcha(self):
-        """Login formlarında CAPTCHA kontrolü yapar"""
-        captcha_forms = []
-        
-        for form_data in self.login_forms:
-            try:
-                form_url = form_data['url']
-                
-                # Sayfayı kontrol et
-                response = requests.get(form_url, timeout=10, verify=False)
-                soup = BeautifulSoup(response.text, 'html.parser')
-                
-                # CAPTCHA göstergeleri
-                captcha_indicators = [
-                    # Google reCAPTCHA
-                    'grecaptcha', 'g-recaptcha', 'recaptcha',
-                    # hCaptcha
-                    'hcaptcha', 'h-captcha',
-                    # Genel CAPTCHA göstergeleri
-                    'captcha', 'security code', 'güvenlik kodu', 'doğrulama kodu'
-                ]
-                
-                has_captcha = False
-                
-                # HTML içinde CAPTCHA göstergelerini ara
-                html_lower = response.text.lower()
-                for indicator in captcha_indicators:
-                    if indicator in html_lower:
-                        has_captcha = True
-                        break
-                        
-                # Görüntü elementleri içinde CAPTCHA ara
-                if not has_captcha:
-                    img_tags = soup.find_all('img')
-                    for img in img_tags:
-                        img_src = img.get('src', '')
-                        img_alt = img.get('alt', '')
-                        
-                        if 'captcha' in img_src.lower() or 'captcha' in img_alt.lower():
-                            has_captcha = True
-                            break
-                            
-                # CAPTCHA içeren formlar listesine ekle
-                if has_captcha:
-                    captcha_forms.append({
-                        'url': form_url
-                    })
-                    
-            except requests.exceptions.RequestException:
-                continue
-                
-        return captcha_forms
-        
-    def _check_rate_limiting(self):
-        """Login formlarında istek sınırlaması (rate limiting) kontrolü yapar"""
-        rate_limited_forms = []
-        
-        for form_data in self.login_forms:
-            form_url = form_data['url']
-            form_method = form_data['method']
-            username_field = form_data['username_field']
-            password_field = form_data['password_field']
-            other_fields = form_data['other_fields']
-            
-            # Başarısız login denemesi yap
-            try:
-                # Form verilerini hazırla
-                form_data = {}
-                for field in other_fields:
-                    form_data[field['name']] = field['value']
-                    
-                form_data[username_field] = 'test_user_' + str(int(time.time()))
-                form_data[password_field] = 'wrong_password_' + str(int(time.time()))
-                
-                # Art arda 5 başarısız deneme yap
-                has_rate_limiting = False
-                
-                for i in range(5):
-                    if form_method == 'post':
-                        response = requests.post(form_url, data=form_data, timeout=10, verify=False, allow_redirects=True)
-                    else:
-                        response = requests.get(form_url, params=form_data, timeout=10, verify=False, allow_redirects=True)
-                    
-                    # Yanıtı kontrol et
-                    if i > 2:  # 3. denemeden sonra
-                        # Rate limiting göstergeleri
-                        rate_limit_indicators = [
-                            'too many', 'too many attempts', 'çok fazla deneme',
-                            'try again later', 'daha sonra tekrar deneyin',
-                            'rate limit', 'limit exceeded', 'limit aşıldı',
-                            'account locked', 'hesap kilitlendi',
-                            'locked out', 'wait', 'bekleyin'
-                        ]
-                        
-                        # HTML içinde rate limiting göstergelerini ara
-                        html_lower = response.text.lower()
-                        for indicator in rate_limit_indicators:
-                            if indicator in html_lower:
-                                has_rate_limiting = True
-                                break
-                                
-                        # Yanıt koduna göre kontrol (429 Too Many Requests, 403 Forbidden)
-                        if response.status_code in [429, 403]:
-                            has_rate_limiting = True
-                            break
-                            
-                    # İstekler arasında kısa beklemeler ekle
-                    time.sleep(1)
-                
-                # Rate limiting varsa listeye ekle
-                if has_rate_limiting:
-                    rate_limited_forms.append({
-                        'url': form_url
-                    })
-                    
-            except requests.exceptions.RequestException:
-                continue
-                
-        return rate_limited_forms 
+        return result 

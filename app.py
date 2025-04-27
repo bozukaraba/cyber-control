@@ -2,6 +2,8 @@ from flask import Flask, render_template, request, jsonify, send_file
 import os
 from scanner.scanner import SecurityScanner
 from report.report_generator import ReportGenerator
+import json
+from scanner.main import main as scanner_main
 
 app = Flask(__name__)
 
@@ -11,20 +13,27 @@ def index():
 
 @app.route('/scan', methods=['POST'])
 def scan():
-    url = request.form.get('url')
-    if not url:
-        return jsonify({'error': 'URL gerekli'}), 400
+    data = request.get_json()
+    target_url = data.get('targetUrl')
     
-    scanner = SecurityScanner(url)
-    scan_results = scanner.run_all_scans()
-    
-    report_generator = ReportGenerator(url, scan_results)
-    report_path = report_generator.generate_pdf()
-    
-    return jsonify({
-        'success': True,
-        'report_url': f'/download/{os.path.basename(report_path)}'
-    })
+    try:
+        # Tarama işlemini başlat
+        scanner_main(target_url)
+        
+        # Sonuçları oku
+        with open('scan_results.json', 'r', encoding='utf-8') as f:
+            results = json.load(f)
+            
+        return jsonify({
+            'status': 'success',
+            'results': results
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
 
 @app.route('/download/<filename>')
 def download_report(filename):

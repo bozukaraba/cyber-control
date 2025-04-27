@@ -25,7 +25,6 @@ __pycache__/
 *$py.class
 *.so
 .Python
-env/
 build/
 develop-eggs/
 dist/
@@ -37,12 +36,25 @@ lib64/
 parts/
 sdist/
 var/
+wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+
+# Virtual Environment
+venv/
+ENV/
 
 # IDE
 .idea/
 .vscode/
 *.swp
-*.swo 
+*.swo
+
+# Logs
+*.log
+
+# Local
+.env
+.DS_Store
+scan_results.json 
