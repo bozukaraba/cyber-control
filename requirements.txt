@@ -6,7 +6,7 @@ cryptography==42.0.5
 pyOpenSSL==24.0.0
 dnspython==2.6.1
 aiohttp==3.9.3
-sqlmap-python==1.7.10
+sqlmap==1.7.2
 wapiti3==3.1.8
 sslyze==5.2.0
 reportlab==4.1.0
