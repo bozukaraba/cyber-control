@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // DOM elementlerini seç
     scanForm = document.getElementById('scanForm');
-    urlInput = document.getElementById('url');
+    urlInput = document.getElementById('targetUrl');
     scanProgress = document.querySelector('.progress-bar');
     currentScan = document.getElementById('currentScan');
     loadingIndicator = document.getElementById('loadingIndicator');
@@ -58,31 +58,34 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             
-            if (!url.match(/^https?:\/\/.+/)) {
-                showToast('Hata', 'Lütfen geçerli bir URL giriniz (http:// veya https:// ile başlamalı)', 'error');
+            try {
+                // URL formatını kontrol et
+                new URL(url);
+            } catch {
+                showToast('Hata', 'Lütfen geçerli bir URL giriniz', 'error');
                 return;
             }
             
             // Seçili testleri al
             const selectedTests = {
-                ssl: document.getElementById('sslCheck').checked,
-                port: document.getElementById('portCheck').checked,
-                header: document.getElementById('headerCheck').checked,
-                sql: document.getElementById('sqlCheck').checked,
-                xss: document.getElementById('xssCheck').checked,
-                info: document.getElementById('infoCheck').checked,
-                admin: document.getElementById('adminCheck').checked,
-                cms: document.getElementById('cmsCheck').checked,
-                upload: document.getElementById('uploadCheck').checked,
-                brute: document.getElementById('bruteCheck').checked
+                ssl: document.getElementById('sslCheck')?.checked || false,
+                port: document.getElementById('portCheck')?.checked || false,
+                header: document.getElementById('headerCheck')?.checked || false,
+                sql: document.getElementById('sqlCheck')?.checked || false,
+                xss: document.getElementById('xssCheck')?.checked || false,
+                info: document.getElementById('infoCheck')?.checked || false,
+                admin: document.getElementById('adminCheck')?.checked || false,
+                cms: document.getElementById('cmsCheck')?.checked || false,
+                upload: document.getElementById('uploadCheck')?.checked || false,
+                brute: document.getElementById('bruteCheck')?.checked || false
             };
             
             // En az bir test seçili mi kontrol et
-            if (!Object.values(selectedTests).some(value => value)) {
+            if (!Object.values(selectedTests).some(Boolean)) {
                 showToast('Uyarı', 'Lütfen en az bir tarama seçeneği seçiniz', 'warning');
                 return;
             }
-            
+
             try {
                 // Tarama modalını göster
                 const scanModal = new bootstrap.Modal(document.getElementById('scanModal'));
@@ -90,25 +93,33 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // Progress bar'ı sıfırla
                 const progressBar = document.querySelector('.progress-bar');
-                progressBar.style.width = '0%';
-                progressBar.setAttribute('aria-valuenow', '0');
+                if (progressBar) {
+                    progressBar.style.width = '0%';
+                    progressBar.setAttribute('aria-valuenow', '0');
+                }
                 
                 // Seçili testleri sırayla çalıştır
                 let progress = 0;
-                const increment = 100 / Object.values(selectedTests).filter(v => v).length;
+                const selectedTestCount = Object.values(selectedTests).filter(Boolean).length;
+                const increment = 100 / selectedTestCount;
                 
                 for (const [test, isSelected] of Object.entries(selectedTests)) {
                     if (isSelected) {
                         // Test durumunu güncelle
-                        document.getElementById('currentTest').textContent = getTestName(test);
+                        const currentTest = document.getElementById('currentTest');
+                        if (currentTest) {
+                            currentTest.textContent = getTestName(test);
+                        }
                         
-                        // Test simülasyonu (gerçek API çağrısı burada yapılacak)
+                        // Test simülasyonu
                         await simulateTest(test, url);
                         
                         // Progress bar'ı güncelle
                         progress += increment;
-                        progressBar.style.width = `${progress}%`;
-                        progressBar.setAttribute('aria-valuenow', progress);
+                        if (progressBar) {
+                            progressBar.style.width = `${progress}%`;
+                            progressBar.setAttribute('aria-valuenow', progress);
+                        }
                     }
                 }
                 
@@ -217,7 +228,6 @@ async function simulateTest(test, url) {
 function showResults() {
     const resultModal = new bootstrap.Modal(document.getElementById('resultModal'));
     
-    // Örnek sonuçlar
     const results = [
         {
             test: 'SSL/TLS Güvenlik Testi',
@@ -228,10 +238,14 @@ function showResults() {
             test: 'Açık Port Taraması',
             status: 'Uyarı',
             details: '80 ve 443 portları dışında açık port tespit edilmedi.'
+        },
+        {
+            test: 'HTTP Güvenlik Header Testi',
+            status: 'Uyarı',
+            details: 'X-Frame-Options ve CSP başlıkları eksik.'
         }
     ];
     
-    // Sonuçları HTML olarak oluştur
     const resultsHtml = results.map(result => `
         <div class="alert ${result.status === 'Güvenli' ? 'alert-success' : 'alert-warning'} mb-3">
             <h5 class="alert-heading">${result.test}</h5>
@@ -239,17 +253,26 @@ function showResults() {
         </div>
     `).join('');
     
-    // Sonuçları modalda göster
-    document.getElementById('scanResults').innerHTML = resultsHtml;
-    resultModal.show();
+    const scanResults = document.getElementById('scanResults');
+    if (scanResults) {
+        scanResults.innerHTML = resultsHtml;
+        resultModal.show();
+    }
 }
 
 // Toast mesajı göster
 function showToast(title, message, type) {
-    // Bootstrap toast oluştur
+    let container = document.getElementById('toastContainer');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toastContainer';
+        container.className = 'toast-container position-fixed top-0 end-0 p-3';
+        document.body.appendChild(container);
+    }
+    
     const toastHtml = `
         <div class="toast align-items-center text-white bg-${type === 'error' ? 'danger' : type} border-0" 
-             role="alert" aria-live="assertive" aria-atomic="true">
+             role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="3000">
             <div class="d-flex">
                 <div class="toast-body">
                     <strong>${title}</strong><br>${message}
@@ -259,22 +282,11 @@ function showToast(title, message, type) {
         </div>
     `;
     
-    // Toast container oluştur
-    let container = document.getElementById('toastContainer');
-    if (!container) {
-        container = document.createElement('div');
-        container.id = 'toastContainer';
-        container.className = 'toast-container position-fixed top-0 end-0 p-3';
-        document.body.appendChild(container);
-    }
-    
-    // Toast'ı ekle ve göster
     container.insertAdjacentHTML('beforeend', toastHtml);
     const toastElement = container.lastElementChild;
     const toast = new bootstrap.Toast(toastElement);
     toast.show();
     
-    // Toast'ı otomatik kaldır
     toastElement.addEventListener('hidden.bs.toast', () => {
         toastElement.remove();
     });
