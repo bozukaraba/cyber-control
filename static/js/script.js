@@ -46,12 +46,12 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Form gönderildiğinde işlem yap
-    if (scanForm) {
-        scanForm.addEventListener('submit', async function(e) {
-            e.preventDefault(); // Sayfanın yenilenmesini engelle
-            
+    // Form submit yerine buton tıklama ile işlem yap
+    const startScanBtn = document.getElementById('startScan');
+    if (startScanBtn) {
+        startScanBtn.addEventListener('click', async function() {
             // URL kontrolü
+            const urlInput = document.getElementById('targetUrl');
             const url = urlInput.value.trim();
             if (!url) {
                 showToast('Hata', 'Lütfen hedef URL giriniz', 'error');
@@ -80,23 +80,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 brute: document.getElementById('bruteCheck')?.checked || false
             };
             
-                // Tarama modalını göster
-                const scanModal = new bootstrap.Modal(document.getElementById('scanModal'));
-                scanModal.show();
-                
-                // Progress bar'ı sıfırla
-                const progressBar = document.querySelector('.progress-bar');
-                if (progressBar) {
-                    progressBar.style.width = '0%';
-                    progressBar.setAttribute('aria-valuenow', '0');
-                }
-                
+            // Tarama modalını göster
+            const scanModal = new bootstrap.Modal(document.getElementById('scanModal'));
+            scanModal.show();
+            
             try {
-                // Backend'e gerçek tarama isteği gönder
+                console.log('Tarama isteği gönderiliyor:', url);
+                
+                // Gerçek API isteği
                 const response = await fetch('/scan', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
+                        'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
                         targetUrl: url,
@@ -104,22 +99,44 @@ document.addEventListener('DOMContentLoaded', function() {
                     })
                 });
                 
+                console.log('Sunucu yanıtı:', response);
+                
                 if (!response.ok) {
-                    throw new Error('Sunucu yanıt vermiyor');
+                    throw new Error(`Sunucu hatası: ${response.status}`);
                 }
                 
-                const result = await response.json();
+                const data = await response.json();
+                console.log('Tarama sonuçları:', data);
                 
-                if (result.status === 'error') {
-                    throw new Error(result.message);
+                // Modalı kapat
+                scanModal.hide();
+                
+                // Sonuçları göster
+                const resultModal = new bootstrap.Modal(document.getElementById('resultModal'));
+                const resultsContainer = document.getElementById('scanResults');
+                
+                if (resultsContainer && data.results) {
+                    let html = '';
+                    
+                    data.results.forEach(result => {
+                        html += `<h4>${result.title}</h4><hr>`;
+                        
+                        result.findings.forEach(finding => {
+                            html += `
+                            <div class="alert alert-${getRiskClass(finding.risk_level)} mb-3">
+                                <h5 class="alert-heading">${finding.name}</h5>
+                                <p><strong>Risk Seviyesi:</strong> ${finding.risk_level}</p>
+                                <p><strong>Açıklama:</strong> ${finding.description}</p>
+                                <p><strong>Etki:</strong> ${finding.impact}</p>
+                                <p><strong>Öneriler:</strong> ${finding.recommendation}</p>
+                            </div>`;
+                        });
+                    });
+                    
+                    resultsContainer.innerHTML = html;
                 }
                 
-                // Taramayı tamamla
-                setTimeout(() => {
-                    scanModal.hide();
-                    // Gerçek sonuçları göster
-                    displayResults(result.results);
-                }, 1000);
+                resultModal.show();
                 
             } catch (error) {
                 console.error('Tarama hatası:', error);
@@ -982,4 +999,16 @@ function completeScan() {
 // Sleep fonksiyonu - asenkron bekleme
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// Risk seviyesine göre Bootstrap alert sınıfı
+function getRiskClass(riskLevel) {
+    switch(riskLevel) {
+        case 'Kritik': return 'danger';
+        case 'Yüksek': return 'danger';
+        case 'Orta': return 'warning';
+        case 'Düşük': return 'info';
+        case 'Bilgi': return 'success';
+        default: return 'secondary';
+    }
 } 
