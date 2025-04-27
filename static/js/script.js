@@ -80,13 +80,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 brute: document.getElementById('bruteCheck')?.checked || false
             };
             
-            // En az bir test seçili mi kontrol et
-            if (!Object.values(selectedTests).some(Boolean)) {
-                showToast('Uyarı', 'Lütfen en az bir tarama seçeneği seçiniz', 'warning');
-                return;
-            }
-
-            try {
                 // Tarama modalını göster
                 const scanModal = new bootstrap.Modal(document.getElementById('scanModal'));
                 scanModal.show();
@@ -98,40 +91,40 @@ document.addEventListener('DOMContentLoaded', function() {
                     progressBar.setAttribute('aria-valuenow', '0');
                 }
                 
-                // Seçili testleri sırayla çalıştır
-                let progress = 0;
-                const selectedTestCount = Object.values(selectedTests).filter(Boolean).length;
-                const increment = 100 / selectedTestCount;
+            try {
+                // Backend'e gerçek tarama isteği gönder
+                const response = await fetch('/scan', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        targetUrl: url,
+                        scanOptions: selectedTests
+                    })
+                });
                 
-                for (const [test, isSelected] of Object.entries(selectedTests)) {
-                    if (isSelected) {
-                        // Test durumunu güncelle
-                        const currentTest = document.getElementById('currentTest');
-                        if (currentTest) {
-                            currentTest.textContent = getTestName(test);
-                        }
-                        
-                        // Test simülasyonu
-                        await simulateTest(test, url);
-                        
-                        // Progress bar'ı güncelle
-                        progress += increment;
-                        if (progressBar) {
-                            progressBar.style.width = `${progress}%`;
-                            progressBar.setAttribute('aria-valuenow', progress);
-                        }
-                    }
+                if (!response.ok) {
+                    throw new Error('Sunucu yanıt vermiyor');
+                }
+                
+                const result = await response.json();
+                
+                if (result.status === 'error') {
+                    throw new Error(result.message);
                 }
                 
                 // Taramayı tamamla
                 setTimeout(() => {
                     scanModal.hide();
-                    showResults();
+                    // Gerçek sonuçları göster
+                    displayResults(result.results);
                 }, 1000);
                 
             } catch (error) {
                 console.error('Tarama hatası:', error);
-                showToast('Hata', 'Tarama sırasında bir hata oluştu', 'error');
+                scanModal.hide();
+                showToast('Hata', 'Tarama sırasında bir hata oluştu: ' + error.message, 'error');
             }
         });
     }
@@ -225,38 +218,43 @@ async function simulateTest(test, url) {
 }
 
 // Sonuçları göster
-function showResults() {
+function displayResults(results) {
     const resultModal = new bootstrap.Modal(document.getElementById('resultModal'));
+    const resultsContainer = document.getElementById('scanResults');
     
-    const results = [
-        {
-            test: 'SSL/TLS Güvenlik Testi',
-            status: 'Güvenli',
-            details: 'SSL sertifikası geçerli ve güncel.'
-        },
-        {
-            test: 'Açık Port Taraması',
-            status: 'Uyarı',
-            details: '80 ve 443 portları dışında açık port tespit edilmedi.'
-        },
-        {
-            test: 'HTTP Güvenlik Header Testi',
-            status: 'Uyarı',
-            details: 'X-Frame-Options ve CSP başlıkları eksik.'
-        }
-    ];
+    if (resultsContainer) {
+        let html = '';
+        
+        results.forEach(result => {
+            html += `<h4>${result.title}</h4><hr>`;
+            
+            result.findings.forEach(finding => {
+                html += `
+                <div class="alert ${getRiskLevelClass(finding.risk_level)} mb-3">
+                    <h5 class="alert-heading">${finding.name}</h5>
+                    <p><strong>Risk Seviyesi:</strong> ${finding.risk_level}</p>
+                    <p><strong>Açıklama:</strong> ${finding.description}</p>
+                    <p><strong>Etki:</strong> ${finding.impact}</p>
+                    <p><strong>Öneriler:</strong> ${finding.recommendation}</p>
+                </div>`;
+            });
+        });
+        
+        resultsContainer.innerHTML = html;
+    }
     
-    const resultsHtml = results.map(result => `
-        <div class="alert ${result.status === 'Güvenli' ? 'alert-success' : 'alert-warning'} mb-3">
-            <h5 class="alert-heading">${result.test}</h5>
-            <p class="mb-0">${result.details}</p>
-        </div>
-    `).join('');
-    
-    const scanResults = document.getElementById('scanResults');
-    if (scanResults) {
-        scanResults.innerHTML = resultsHtml;
-        resultModal.show();
+    resultModal.show();
+}
+
+// Risk seviyesine göre Bootstrap alert sınıfı döndür
+function getRiskLevelClass(riskLevel) {
+    switch(riskLevel) {
+        case 'Kritik': return 'alert-danger';
+        case 'Yüksek': return 'alert-danger';
+        case 'Orta': return 'alert-warning';
+        case 'Düşük': return 'alert-info';
+        case 'Bilgi': return 'alert-success';
+        default: return 'alert-secondary';
     }
 }
 
